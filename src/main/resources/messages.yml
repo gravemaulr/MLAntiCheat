@@ -1,0 +1,40 @@
+command:
+  players-only: '<red>This command is only available in game</red>'
+  no-permission: '<red>You do not have permission to do that</red>'
+  alerts-enabled: '<green>Alerts are now visible</green>'
+  alerts-disabled: '<gray>Alerts are now hidden</gray>'
+  tags-enabled: '<green>Player tags are now visible</green>'
+  tags-disabled: '<gray>Player tags are now hidden</gray>'
+  reloaded: '<green>MLAntiCheat configuration reloaded</green>'
+  inspect-usage: '<gray>Usage: <white>/mlac inspect <player></white></gray>'
+  stats-usage: '<gray>Usage: <white>/mlac stats <player></white></gray>'
+  train-usage: '<gray>Usage: <white>/mlac train <legit|cheat|stop> <player></white></gray>'
+  unknown-player: '<red>Player not found</red>'
+  no-statistics: '<gray>No statistics are available for this player</gray>'
+  player-online-required: '<red>This player must be online</red>'
+  invalid-label: '<red>Choose legit cheat or stop</red>'
+  training-updated: '<green>Training label updated for %player%</green>'
+  help: '<gray>/mlac <white>gui</white> | inspect | stats | alerts | tags | train | model | reload</gray>'
+  model: '<dark_aqua>model</dark_aqua> <gray>ready <white>%ready%</white>  samples <white>%samples%</white>  precision <white>%precision%</white>  recall <white>%recall%</white>  fpr <white>%fpr%</white></gray>'
+  stats-title: '<dark_aqua>%player%</dark_aqua>'
+  stats-scores: '<gray>precision <white>%prec%</white>  dynamics <white>%dyn%</white>  pattern <white>%pat%</white>  tracking <white>%trk%</white>  ml <white>%ml%</white></gray>'
+  stats-summary: '<gray>analyses <white>%analyses%</white>  alerts <white>%alerts%</white>  average <white>%average%</white>  maximum <white>%maximum%</white></gray>'
+alert:
+  staff: '<dark_red>%prefix%</dark_red> <white>%player%</white> <dark_gray>·</dark_gray> <gray>ml <white>%score%</white>  raw <white>%raw_score%</white>  %ping% ms  %tps% tps  %rule% %confirmations%/%required%</gray>'
+  hover: '<gray>Open the player card</gray>'
+  console: '%player% | ml %score% raw %raw_score% | %ping% ms %tps% tps | %rule% %confirmations%/%required%'
+tag:
+  separator: '<dark_gray> · </dark_gray>'
+  label: '<gray>%name%</gray> '
+  value: '<white>%value%</white>'
+time:
+  never: never
+  days: '%value%d ago'
+  hours: '%value%h ago'
+  minutes: '%value%m ago'
+  seconds: '%value%s ago'
+status:
+  online: online
+  offline: offline
+  all-players: all players
+  search: 'search: %query%'

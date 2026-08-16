@@ -1,0 +1,51 @@
+update-ticks: 20
+list:
+  size: 54
+  title: '<dark_red><bold>MLAC</bold></dark_red> <dark_gray>·</dark_gray> <gray>players %page%/%pages%</gray>'
+  content-slots: '0-44'
+  items:
+    previous: { slot: 45, material: ARROW, name: '<white>Previous page</white>', lore: [], action: prev }
+    search: { slot: 48, material: NAME_TAG, name: '<white>%search%</white>', lore: ['<gray>Use /mlac gui <name></gray>'], action: none }
+    sort: { slot: 49, material: HOPPER, name: '<white>Sort by %sort%</white>', lore: ['<gray>Click to change</gray>'], action: sort }
+    realtime: { slot: 50, material: CLOCK, name: '<green>Live view</green>', lore: ['<gray>Online and saved players</gray>', '<dark_gray>Updates every %seconds%s</dark_gray>'], action: none }
+    next: { slot: 53, material: ARROW, name: '<white>Next page</white>', lore: [], action: next }
+  player:
+    material-low: EMERALD_BLOCK
+    material-medium: YELLOW_CONCRETE
+    material-high: ORANGE_CONCRETE
+    material-critical: REDSTONE_BLOCK
+    name: '<white>%player%</white> <dark_gray>·</dark_gray> <gray>ml %ml%</gray>'
+    lore: ['<gray>%status%</gray>', '<dark_gray>maximum %max%  average %average%</dark_gray>', '<dark_gray>alerts %alerts%  analyses %analyses%</dark_gray>', '', '<yellow>Click to inspect</yellow>']
+card:
+  size: 45
+  title: '<dark_red><bold>MLAC</bold></dark_red> <dark_gray>·</dark_gray> <white>%player%</white>'
+  score-slots: [10, 11, 12, 13, 14]
+  score-materials: [SPYGLASS, FEATHER, REPEATER, TARGET, AUTO_RISK]
+  score-name: '<white>%score_name%</white> <gray>%score%</gray>'
+  score-lore: ['<dark_gray>raw %raw%</dark_gray>', '<dark_gray>maximum %max%</dark_gray>', '<dark_gray>average %average%</dark_gray>']
+  items:
+    status: { slot: 20, material: AUTO_STATUS, name: '<white>%status%</white>', lore: ['<gray>ping %ping% ms</gray>', '<gray>tps %tps%</gray>', '<dark_gray>seen %seen%</dark_gray>'], action: none }
+    statistics: { slot: 22, material: BOOK, name: '<white>Statistics</white>', lore: ['<gray>analyses %analyses%</gray>', '<gray>alerts %alerts%</gray>', '<dark_gray>history %history%</dark_gray>'], action: history }
+    risk: { slot: 24, material: COMPARATOR, name: '<white>Risk level</white>', lore: ['<gray>%risk%</gray>', '<dark_gray>adjusted %ml%</dark_gray>', '<dark_gray>raw %raw%</dark_gray>'], action: none }
+    back: { slot: 36, material: ARROW, name: '<white>Back</white>', lore: [], action: back }
+    legit: { slot: 38, material: LIME_DYE, name: '<green>Train as legit</green>', lore: ['<gray>Labels new samples in real time</gray>'], action: legit }
+    stop: { slot: 40, material: BARRIER, name: '<white>Stop training</white>', lore: [], action: stop }
+    cheat: { slot: 42, material: RED_DYE, name: '<red>Train as cheat</red>', lore: ['<gray>Labels new samples in real time</gray>'], action: cheat }
+history:
+  size: 54
+  title: '<dark_red><bold>MLAC</bold></dark_red> <dark_gray>·</dark_gray> <white>%player% history</white>'
+  content-slots: '0-44'
+  detection:
+    name: '<white>%rule%</white> <gray>%score%</gray>'
+    lore: ['<dark_gray>raw %raw%</dark_gray>', '<dark_gray>ping %ping% ms</dark_gray>', '<dark_gray>tps %tps%</dark_gray>', '<gray>%seen%</gray>']
+  back: { slot: 49, material: ARROW, name: '<white>Back</white>', lore: [], action: card }
+risk:
+  critical: 0.90
+  high: 0.75
+  medium: 0.50
+  names: { critical: critical, high: high, medium: medium, low: low }
+fillers:
+  enabled: true
+  material: GRAY_STAINED_GLASS_PANE
+  name: ' '
+  lore: []
