@@ -1,0 +1,28 @@
+name: MLAntiCheat
+version: ${project.version}
+main: com.wnteam.mlanticheat.MLAntiCheat
+api-version: '1.21'
+author: gravemaulr
+description: Machine learning combat analysis for modern Paper servers
+website: https://github.com/gravemaulr/MLAntiCheat
+softdepend:
+  - packetevents
+  - PacketEvents
+commands:
+  mlac:
+    description: Open MLAntiCheat administration
+    permission: mlac.view
+    aliases: [mlanticheat]
+permissions:
+  mlac.view:
+    default: op
+  mlac.alerts:
+    default: op
+  mlac.train:
+    default: op
+  mlac.reload:
+    default: op
+  mlac.tags:
+    default: op
+  mlac.bypass:
+    default: false
