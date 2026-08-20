@@ -25,7 +25,7 @@ public final class AlertDispatcher {
     private final AtomicLong dispatched = new AtomicLong(), suppressed = new AtomicLong();
 
     public AlertDispatcher(JavaPlugin plugin, EvidenceRecorder evidence, TextConfig messages) { this.plugin = plugin; this.evidence = evidence; this.messages = messages; }
-    public void forget(UUID uuid) {}
+    public void forget(UUID uuid) { disabled.remove(uuid); }
     public long getDispatched() { return dispatched.get(); }
     public long getSuppressed() { return suppressed.get(); }
     public boolean toggle(Player player) { if (!disabled.add(player.getUniqueId())) { disabled.remove(player.getUniqueId()); return true; } return false; }
@@ -43,7 +43,8 @@ public final class AlertDispatcher {
     }
 
     private void execute(Player player, PlayerData data, Settings settings, Settings.ActionRule rule, int confirmations) {
-        Map<String, Object> values = Map.of("prefix", settings.shadowMode ? "[MLAC shadow]" : "[MLAC]", "player", player.getName(), "score", format(data.getLastPrediction()), "raw_score", format(data.getRawScore()), "ping", data.getLastPing(), "tps", format(data.getLastTps()), "rule", rule.id(), "confirmations", confirmations, "required", rule.confirmations());
+        String prefix = settings.shadowMode ? settings.notifyPrefix + " shadow" : settings.notifyPrefix;
+        Map<String, Object> values = Map.of("prefix", prefix, "player", player.getName(), "score", format(data.getLastPrediction()), "raw_score", format(data.getRawScore()), "ping", data.getLastPing(), "tps", format(data.getLastTps()), "rule", rule.id(), "confirmations", confirmations, "required", rule.confirmations());
         data.recordDetection(rule.id());
         if (rule.staffAlert()) {
             Component message = messages.component("alert.staff", "%prefix% %player%", values)
