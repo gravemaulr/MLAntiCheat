@@ -11,6 +11,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.persistence.PersistentDataType;
 
 public final class CombatListener implements Listener {
 
@@ -39,12 +40,16 @@ public final class CombatListener implements Listener {
         }
     }
 
-    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = false)
     public void onDamage(EntityDamageByEntityEvent event) {
         if (!(event.getDamager() instanceof Player attacker)) {
             return;
         }
         if (!(event.getEntity() instanceof LivingEntity target)) {
+            return;
+        }
+        boolean dummy = target.getPersistentDataContainer().has(plugin.dummyKey(), PersistentDataType.BYTE);
+        if (event.isCancelled() && !dummy) {
             return;
         }
         checkManager.handleAttack(attacker, target);
