@@ -7,6 +7,7 @@ import com.wnteam.mlanticheat.data.PlayerDataManager;
 import com.wnteam.mlanticheat.data.PlayerStatsStore;
 import com.wnteam.mlanticheat.display.TagDisplayManager;
 import com.wnteam.mlanticheat.ml.TrainingManager;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -14,6 +15,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 
 import java.util.UUID;
 
@@ -43,5 +45,13 @@ public final class ConnectionListener implements Listener {
         if (plugin.getCheckManager() != null) plugin.getCheckManager().forget(uuid);
     }
     @EventHandler(priority = EventPriority.MONITOR)
-    public void onRespawn(PlayerRespawnEvent event) { data.get(event.getPlayer()).reset(); tags.attach(event.getPlayer()); }
+    public void onRespawn(PlayerRespawnEvent event) {
+        data.get(event.getPlayer()).reset();
+        Bukkit.getScheduler().runTask(plugin, () -> tags.attach(event.getPlayer()));
+    }
+
+    @EventHandler(priority = EventPriority.MONITOR)
+    public void onChangedWorld(PlayerChangedWorldEvent event) {
+        Bukkit.getScheduler().runTask(plugin, () -> tags.attach(event.getPlayer()));
+    }
 }
