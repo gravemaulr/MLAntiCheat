@@ -19,6 +19,7 @@ The plugin does not come with a ready model. Every server is different so you ne
 - can use PacketEvents for better rotation data
 - supports automatic training from reviewed player data
 - includes a physical dummy for safe combat testing
+- floating tags above players are fully configurable in `config.yml`
 
 ### Requirements
 
@@ -71,12 +72,12 @@ No model is perfect. Staff review is still important.
 | Command | What it does |
 | --- | --- |
 | `/mlac gui [name]` | Opens the player list |
-| `/mlac inspect <player>` | Opens a player card |
-| `/mlac stats <player>` | Shows player scores |
+| `/mlac inspect ` | Opens a player card |
+| `/mlac stats ` | Shows player scores |
 | `/mlac alerts` | Turns your alerts on or off |
 | `/mlac tags` | Turns floating tags on or off |
 | `/mlac dummy` | Spawns or removes a physical test dummy |
-| `/mlac train <legit\|cheat\|stop> <player>` | Controls training |
+| `/mlac train <legit\|cheat\|stop> ` | Controls training |
 | `/mlac model` | Shows model status |
 | `/mlac reload` | Reloads plugin files |
 
@@ -91,6 +92,25 @@ No model is perfect. Staff review is still important.
 | `mlac.tags` | Floating tags |
 | `mlac.dummy` | Physical test dummy |
 | `mlac.bypass` | Ignore a player during checks |
+
+### Floating tags
+
+Tag lines above players are configured in `config.yml` under `display.lines`. Each list entry is one line of the tag, top to bottom.
+
+```yaml
+display:
+  lines:
+    - '&7PREC %prec_color%%prec% &8· &7DYN %dyn_color%%dyn% &8· &7PAT %pat_color%%pat% &8· &7TRK %trk_color%%trk% &8· &7ML %ml_color%%ml%'
+    - '&f%player_name%'
+```
+
+Available placeholders:
+
+- `%player_name%` — player name
+- `%prec%` `%dyn%` `%pat%` `%trk%` `%ml%` — score values
+- `%prec_color%` `%dyn_color%` `%pat_color%` `%trk_color%` `%ml_color%` — dynamic color for each score
+
+Color codes use `&`. Apply changes with `/mlac reload`.
 
 ### Files
 
@@ -126,6 +146,7 @@ MLAntiCheat — боевой античит для Paper. Он следит за
 - поддерживает PacketEvents для более точных данных о поворотах
 - умеет автоматически обучаться на проверенных данных игроков
 - имеет физический манекен для безопасной проверки боя
+- текст тегов над игроками полностью настраивается в `config.yml`
 
 ### Требования
 
@@ -198,6 +219,25 @@ MLAntiCheat — боевой античит для Paper. Он следит за
 | `mlac.tags` | Теги над игроками |
 | `mlac.dummy` | Физический манекен для проверки |
 | `mlac.bypass` | Игнорирование игрока при проверках |
+
+### Теги над игроками
+
+Строки тега настраиваются в `config.yml` в секции `display.lines`. Каждый элемент списка — одна строка тега сверху вниз.
+
+```yaml
+display:
+  lines:
+    - '&7PREC %prec_color%%prec% &8· &7DYN %dyn_color%%dyn% &8· &7PAT %pat_color%%pat% &8· &7TRK %trk_color%%trk% &8· &7ML %ml_color%%ml%'
+    - '&f%player_name%'
+```
+
+Доступные плейсхолдеры:
+
+- `%player_name%` — имя игрока
+- `%prec%` `%dyn%` `%pat%` `%trk%` `%ml%` — значения оценок
+- `%prec_color%` `%dyn_color%` `%pat_color%` `%trk_color%` `%ml_color%` — динамический цвет каждой оценки
+
+Цветовые коды пишутся через `&`. Изменения применяются командой `/mlac reload`.
 
 ### Файлы
 
