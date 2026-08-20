@@ -7,6 +7,7 @@ import com.wnteam.mlanticheat.data.PlayerData;
 import com.wnteam.mlanticheat.data.PlayerDataManager;
 import com.wnteam.mlanticheat.data.PlayerStatsStore;
 import com.wnteam.mlanticheat.display.TagDisplayManager;
+import com.wnteam.mlanticheat.entity.DummyManager;
 import com.wnteam.mlanticheat.gui.AdminGui;
 import com.wnteam.mlanticheat.ml.EnsembleModel;
 import com.wnteam.mlanticheat.ml.TrainingManager;
@@ -24,7 +25,7 @@ import java.util.Map;
 import java.util.UUID;
 
 public final class MLACCommand implements CommandExecutor, TabCompleter {
-    private static final List<String> ROOT = List.of("gui", "inspect", "stats", "alerts", "tags", "train", "model", "reload");
+    private static final List<String> ROOT = List.of("gui", "inspect", "stats", "alerts", "tags", "dummy", "train", "model", "reload");
 
     private final MLAntiCheat plugin;
     private final PlayerDataManager data;
@@ -34,11 +35,12 @@ public final class MLACCommand implements CommandExecutor, TabCompleter {
     private final NameCache names;
     private final AdminGui gui;
     private final TagDisplayManager tags;
+    private final DummyManager dummies;
     private final TextConfig messages;
 
     public MLACCommand(MLAntiCheat plugin, PlayerDataManager data, PlayerStatsStore store,
                        TrainingManager training, EnsembleModel model, NameCache names,
-                       AdminGui gui, TagDisplayManager tags, TextConfig messages) {
+                       AdminGui gui, TagDisplayManager tags, DummyManager dummies, TextConfig messages) {
         this.plugin = plugin;
         this.data = data;
         this.store = store;
@@ -47,6 +49,7 @@ public final class MLACCommand implements CommandExecutor, TabCompleter {
         this.names = names;
         this.gui = gui;
         this.tags = tags;
+        this.dummies = dummies;
         this.messages = messages;
     }
 
@@ -59,6 +62,7 @@ public final class MLACCommand implements CommandExecutor, TabCompleter {
             case "stats" -> inspect(sender, args, false);
             case "alerts" -> toggleAlerts(sender);
             case "tags" -> toggleTags(sender);
+            case "dummy" -> toggleDummy(sender);
             case "train" -> train(sender, args);
             case "model" -> showModel(sender);
             case "reload" -> reload(sender);
@@ -89,6 +93,15 @@ public final class MLACCommand implements CommandExecutor, TabCompleter {
         if (!require(sender, "mlac.tags")) return;
         if (sender instanceof Player player) {
             send(sender, tags.toggle(player) ? "command.tags-enabled" : "command.tags-disabled", Map.of());
+        } else {
+            send(sender, "command.players-only", Map.of());
+        }
+    }
+
+    private void toggleDummy(CommandSender sender) {
+        if (!require(sender, "mlac.dummy")) return;
+        if (sender instanceof Player player) {
+            send(sender, dummies.toggle(player) ? "command.dummy-spawned" : "command.dummy-removed", Map.of());
         } else {
             send(sender, "command.players-only", Map.of());
         }
