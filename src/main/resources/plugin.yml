@@ -24,5 +24,7 @@ permissions:
     default: op
   mlac.tags:
     default: op
+  mlac.dummy:
+    default: op
   mlac.bypass:
     default: false
