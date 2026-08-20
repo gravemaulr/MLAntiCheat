@@ -17,6 +17,8 @@ The plugin does not come with a ready model. Every server is different so you ne
 - saves evidence for later review
 - works safely in Shadow Mode before the model is ready
 - can use PacketEvents for better rotation data
+- supports automatic training from reviewed player data
+- includes a physical dummy for safe combat testing
 
 ### Requirements
 
@@ -73,6 +75,7 @@ No model is perfect. Staff review is still important.
 | `/mlac stats <player>` | Shows player scores |
 | `/mlac alerts` | Turns your alerts on or off |
 | `/mlac tags` | Turns floating tags on or off |
+| `/mlac dummy` | Spawns or removes a physical test dummy |
 | `/mlac train <legit\|cheat\|stop> <player>` | Controls training |
 | `/mlac model` | Shows model status |
 | `/mlac reload` | Reloads plugin files |
@@ -86,6 +89,7 @@ No model is perfect. Staff review is still important.
 | `mlac.train` | Model training |
 | `mlac.reload` | Plugin reload |
 | `mlac.tags` | Floating tags |
+| `mlac.dummy` | Physical test dummy |
 | `mlac.bypass` | Ignore a player during checks |
 
 ### Files
@@ -120,6 +124,8 @@ MLAntiCheat — боевой античит для Paper. Он следит за
 - сохраняет данные о срабатываниях
 - безопасно работает в Shadow Mode пока модель не готова
 - поддерживает PacketEvents для более точных данных о поворотах
+- умеет автоматически обучаться на проверенных данных игроков
+- имеет физический манекен для безопасной проверки боя
 
 ### Требования
 
@@ -176,6 +182,7 @@ MLAntiCheat — боевой античит для Paper. Он следит за
 | `/mlac stats <игрок>` | Показывает оценки игрока |
 | `/mlac alerts` | Включает или выключает ваши уведомления |
 | `/mlac tags` | Включает или выключает теги |
+| `/mlac dummy` | Создает или убирает физический манекен |
 | `/mlac train <legit\|cheat\|stop> <игрок>` | Управляет обучением |
 | `/mlac model` | Показывает состояние модели |
 | `/mlac reload` | Перезагружает файлы плагина |
@@ -189,6 +196,7 @@ MLAntiCheat — боевой античит для Paper. Он следит за
 | `mlac.train` | Обучение модели |
 | `mlac.reload` | Перезагрузка плагина |
 | `mlac.tags` | Теги над игроками |
+| `mlac.dummy` | Физический манекен для проверки |
 | `mlac.bypass` | Игнорирование игрока при проверках |
 
 ### Файлы
