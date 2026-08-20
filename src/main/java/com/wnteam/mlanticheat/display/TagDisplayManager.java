@@ -6,6 +6,7 @@ import com.wnteam.mlanticheat.config.TextConfig;
 import com.wnteam.mlanticheat.data.PlayerData;
 import com.wnteam.mlanticheat.data.PlayerDataManager;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -20,6 +21,7 @@ import org.joml.Vector3f;
 
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -206,15 +208,25 @@ public final class TagDisplayManager {
     private String buildText(Player player) {
         PlayerData data = dataManager.get(player);
         double[] scores = data.snapshotScores();
-        StringBuilder line = new StringBuilder();
-        for (int i = 0; i < scores.length; i++) {
-            if (i > 0) line.append(" §8· ");
-            line.append("§7").append(PlayerData.SCORE_NAMES[i]).append(" ")
-                    .append(scoreColor(scores[i]))
-                    .append(String.format(Locale.US, "%.2f", scores[i]));
+        List<String> lines = settings.displayLines;
+        StringBuilder text = new StringBuilder();
+        for (int i = 0; i < lines.size(); i++) {
+            if (i > 0) text.append('\n');
+            text.append(formatLine(lines.get(i), player, scores));
         }
-        line.append("\n§f").append(player.getName());
-        return line.toString();
+        return text.toString();
+    }
+
+    private String formatLine(String line, Player player, double[] scores) {
+        String result = line
+                .replace("%player_name%", player.getName())
+                .replace("%player%", player.getName());
+        for (int i = 0; i < scores.length && i < PlayerData.SCORE_NAMES.length; i++) {
+            String name = PlayerData.SCORE_NAMES[i].toLowerCase(Locale.ROOT);
+            result = result.replace("%" + name + "%", String.format(Locale.US, "%.2f", scores[i]));
+            result = result.replace("%" + name + "_color%", scoreColor(scores[i]));
+        }
+        return ChatColor.translateAlternateColorCodes('&', result);
     }
 
     private String scoreColor(double score) {
