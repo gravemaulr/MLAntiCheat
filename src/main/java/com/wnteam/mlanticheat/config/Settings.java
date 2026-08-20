@@ -31,6 +31,7 @@ public final class Settings {
     public final int displayIntervalTicks;
     public final double displayHeightOffset;
     public final double displayScale;
+    public final List<String> displayLines;
     public final boolean shadowMode;
     public final String notifyPrefix;
     public final double pingStart;
@@ -60,6 +61,7 @@ public final class Settings {
         displayIntervalTicks = Math.max(1, config.getInt("display.update-ticks", 4));
         displayHeightOffset = config.getDouble("display.height", 0.2);
         displayScale = config.getDouble("display.scale", 0.55);
+        displayLines = loadDisplayLines(config);
         shadowMode = config.getBoolean("alerts.shadow-mode", true);
         notifyPrefix = config.getString("alerts.prefix", "&c[MLAC]&r");
         pingStart = config.getDouble("conditions.ping.start-ms", 150);
@@ -74,6 +76,12 @@ public final class Settings {
                 .orElse(actionRules.get(0));
         alertThreshold = first.threshold();
         confirmationWindows = first.confirmations();
+    }
+
+    private List<String> loadDisplayLines(FileConfiguration config) {
+        List<String> lines = config.getStringList("display.lines");
+        if (lines.isEmpty()) return List.of("&7PREC %prec_color%%prec% &8\u00b7 &7DYN %dyn_color%%dyn% &8\u00b7 &7PAT %pat_color%%pat% &8\u00b7 &7TRK %trk_color%%trk% &8\u00b7 &7ML %ml_color%%ml%", "&f%player_name%");
+        return List.copyOf(lines);
     }
 
     private List<ActionRule> loadRules(FileConfiguration config) {
