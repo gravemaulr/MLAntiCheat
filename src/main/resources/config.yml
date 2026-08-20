@@ -171,6 +171,13 @@ display:
   height: 0.3
   # размер текста над игроком
   scale: 0.50
+  # строки тега сверху вниз
+  # плейсхолдеры: %player_name% %prec% %dyn% %pat% %trk% %ml%
+  # цвета оценок: %prec_color% %dyn_color% %pat_color% %trk_color% %ml_color%
+  # поддерживаются цветовые коды через &
+  lines:
+    - '&7PREC %prec_color%%prec% &8· &7DYN %dyn_color%%dyn% &8· &7PAT %pat_color%%pat% &8· &7TRK %trk_color%%trk% &8· &7ML %ml_color%%ml%'
+    - '&f%player_name%'
 
 storage:
   # как часто сохранять модель и статистику игроков
