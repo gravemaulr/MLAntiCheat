@@ -1,51 +1,93 @@
+# настройка update ticks
 update-ticks: 20
 list:
+  # размер окна
   size: 54
+  # название окна
   title: '<dark_red><bold>MLAC</bold></dark_red> <dark_gray>·</dark_gray> <gray>players %page%/%pages%</gray>'
+  # ячейки списка
   content-slots: '0-44'
   items:
+    # настройка previous
     previous: { slot: 45, material: ARROW, name: '<white>Previous page</white>', lore: [], action: prev }
+    # настройка search
     search: { slot: 48, material: NAME_TAG, name: '<white>%search%</white>', lore: ['<gray>Use /mlac gui <name></gray>'], action: none }
+    # настройка sort
     sort: { slot: 49, material: HOPPER, name: '<white>Sort by %sort%</white>', lore: ['<gray>Click to change</gray>'], action: sort }
+    # настройка realtime
     realtime: { slot: 50, material: CLOCK, name: '<green>Live view</green>', lore: ['<gray>Online and saved players</gray>', '<dark_gray>Updates every %seconds%s</dark_gray>'], action: none }
+    # настройка next
     next: { slot: 53, material: ARROW, name: '<white>Next page</white>', lore: [], action: next }
   player:
+    # настройка material low
     material-low: EMERALD_BLOCK
+    # настройка material medium
     material-medium: YELLOW_CONCRETE
+    # настройка material high
     material-high: ORANGE_CONCRETE
+    # настройка material critical
     material-critical: REDSTONE_BLOCK
+    # название кнопки
     name: '<white>%player%</white> <dark_gray>·</dark_gray> <gray>ml %ml%</gray>'
+    # описание кнопки
     lore: ['<gray>%status%</gray>', '<dark_gray>maximum %max%  average %average%</dark_gray>', '<dark_gray>alerts %alerts%  analyses %analyses%</dark_gray>', '', '<yellow>Click to inspect</yellow>']
 card:
+  # размер окна
   size: 45
+  # название окна
   title: '<dark_red><bold>MLAC</bold></dark_red> <dark_gray>·</dark_gray> <white>%player%</white>'
+  # ячейки оценок
   score-slots: [10, 11, 12, 13, 14]
+  # материалы оценок
   score-materials: [SPYGLASS, FEATHER, REPEATER, TARGET, AUTO_RISK]
+  # настройка score name
   score-name: '<white>%score_name%</white> <gray>%score%</gray>'
+  # настройка score lore
   score-lore: ['<dark_gray>raw %raw%</dark_gray>', '<dark_gray>maximum %max%</dark_gray>', '<dark_gray>average %average%</dark_gray>']
   items:
+    # настройка status
     status: { slot: 20, material: AUTO_STATUS, name: '<white>%status%</white>', lore: ['<gray>ping %ping% ms</gray>', '<gray>tps %tps%</gray>', '<dark_gray>seen %seen%</dark_gray>'], action: none }
+    # настройка statistics
     statistics: { slot: 22, material: BOOK, name: '<white>Statistics</white>', lore: ['<gray>analyses %analyses%</gray>', '<gray>alerts %alerts%</gray>', '<dark_gray>history %history%</dark_gray>'], action: history }
+    # настройка risk
     risk: { slot: 24, material: COMPARATOR, name: '<white>Risk level</white>', lore: ['<gray>%risk%</gray>', '<dark_gray>adjusted %ml%</dark_gray>', '<dark_gray>raw %raw%</dark_gray>'], action: none }
+    # настройка back
     back: { slot: 36, material: ARROW, name: '<white>Back</white>', lore: [], action: back }
+    # настройка legit
     legit: { slot: 38, material: LIME_DYE, name: '<green>Train as legit</green>', lore: ['<gray>Labels new samples in real time</gray>'], action: legit }
+    # настройка stop
     stop: { slot: 40, material: BARRIER, name: '<white>Stop training</white>', lore: [], action: stop }
+    # настройка cheat
     cheat: { slot: 42, material: RED_DYE, name: '<red>Train as cheat</red>', lore: ['<gray>Labels new samples in real time</gray>'], action: cheat }
 history:
+  # размер окна
   size: 54
+  # название окна
   title: '<dark_red><bold>MLAC</bold></dark_red> <dark_gray>·</dark_gray> <white>%player% history</white>'
+  # ячейки списка
   content-slots: '0-44'
   detection:
+    # название кнопки
     name: '<white>%rule%</white> <gray>%score%</gray>'
+    # описание кнопки
     lore: ['<dark_gray>raw %raw%</dark_gray>', '<dark_gray>ping %ping% ms</dark_gray>', '<dark_gray>tps %tps%</dark_gray>', '<gray>%seen%</gray>']
+  # настройка back
   back: { slot: 49, material: ARROW, name: '<white>Back</white>', lore: [], action: card }
 risk:
+  # настройка critical
   critical: 0.90
+  # настройка high
   high: 0.75
+  # настройка medium
   medium: 0.50
+  # настройка names
   names: { critical: critical, high: high, medium: medium, low: low }
 fillers:
+  # настройка enabled
   enabled: true
+  # материал кнопки
   material: GRAY_STAINED_GLASS_PANE
+  # название кнопки
   name: ' '
+  # описание кнопки
   lore: []
