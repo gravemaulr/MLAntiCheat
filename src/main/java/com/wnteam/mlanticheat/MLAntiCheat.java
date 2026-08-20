@@ -11,6 +11,7 @@ import com.wnteam.mlanticheat.data.NameCache;
 import com.wnteam.mlanticheat.data.PlayerDataManager;
 import com.wnteam.mlanticheat.data.PlayerStatsStore;
 import com.wnteam.mlanticheat.display.TagDisplayManager;
+import com.wnteam.mlanticheat.entity.DummyManager;
 import com.wnteam.mlanticheat.gui.AdminGui;
 import com.wnteam.mlanticheat.listener.CombatListener;
 import com.wnteam.mlanticheat.listener.ConnectionListener;
@@ -23,6 +24,7 @@ import com.wnteam.mlanticheat.ml.FeatureExtractor;
 import com.wnteam.mlanticheat.ml.ModelStore;
 import com.wnteam.mlanticheat.ml.TrainingManager;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.PluginManager;
@@ -46,6 +48,8 @@ public final class MLAntiCheat extends JavaPlugin {
     private TrainingManager trainingManager;
     private AutoTrainingManager autoTrainingManager;
     private TagDisplayManager tagManager;
+    private DummyManager dummyManager;
+    private NamespacedKey dummyKey;
     private CheckManager checkManager;
     private TargetScanner targetScanner;
     private PacketRotationListener packetListener;
@@ -73,6 +77,8 @@ public final class MLAntiCheat extends JavaPlugin {
         alertDispatcher = new AlertDispatcher(this, evidence, messages);
         checkManager = new CheckManager(this, dataManager, model, trainingManager, alertDispatcher, settings);
         tagManager = new TagDisplayManager(this, dataManager, settings, messages);
+        dummyKey = new NamespacedKey(this, "dummy");
+        dummyManager = new DummyManager(this);
         targetScanner = new TargetScanner(this, checkManager, settings);
         applyConfig();
 
@@ -82,13 +88,14 @@ public final class MLAntiCheat extends JavaPlugin {
         pm.registerEvents(new ConnectionListener(this, dataManager, statsStore, tagManager, trainingManager, nameCache), this);
         pm.registerEvents(new RotationListener(this, dataManager, checkManager), this);
         pm.registerEvents(new CombatListener(this, dataManager, checkManager), this);
+        pm.registerEvents(dummyManager, this);
         pm.registerEvents(gui, this);
         if (pm.getPlugin("packetevents") != null || pm.getPlugin("PacketEvents") != null) {
             try { packetListener = new PacketRotationListener(this, dataManager, checkManager); packetListener.register(); }
             catch (Throwable error) { getLogger().warning("PacketEvents hook failed: " + error.getMessage()); }
         }
 
-        MLACCommand handler = new MLACCommand(this, dataManager, statsStore, trainingManager, model, nameCache, gui, tagManager, messages);
+        MLACCommand handler = new MLACCommand(this, dataManager, statsStore, trainingManager, model, nameCache, gui, tagManager, dummyManager, messages);
         PluginCommand command = getCommand("mlac");
         if (command != null) { command.setExecutor(handler); command.setTabCompleter(handler); }
         tagManager.start();
@@ -137,9 +144,11 @@ public final class MLAntiCheat extends JavaPlugin {
         if (targetScanner != null) targetScanner.shutdown();
         if (packetListener != null) packetListener.shutdown();
         if (tagManager != null) tagManager.shutdown();
+        if (dummyManager != null) dummyManager.shutdown();
         if (statsStore != null) saveAll();
         if (dataManager != null) dataManager.clear();
     }
+    public NamespacedKey dummyKey() { return dummyKey; }
     public long currentTick() { return tick.get(); }
     public Settings getSettings() { return settings; }
     public AlertDispatcher getAlertDispatcher() { return alertDispatcher; }
