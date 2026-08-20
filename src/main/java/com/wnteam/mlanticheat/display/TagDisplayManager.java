@@ -5,33 +5,32 @@ import com.wnteam.mlanticheat.config.Settings;
 import com.wnteam.mlanticheat.config.TextConfig;
 import com.wnteam.mlanticheat.data.PlayerData;
 import com.wnteam.mlanticheat.data.PlayerDataManager;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
-import org.bukkit.Location;
+import org.bukkit.NamespacedKey;
+import org.bukkit.World;
 import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.TextDisplay;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.util.Transformation;
-import org.joml.AxisAngle4f;
 import org.joml.Vector3f;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 public final class TagDisplayManager {
-
     private final MLAntiCheat plugin;
     private final PlayerDataManager dataManager;
-    private final TextConfig messages;
-    private final Map<UUID, TextDisplay> displays = new ConcurrentHashMap<>();
-    private final Set<UUID> hiddenViewers = ConcurrentHashMap.newKeySet();
+    private final NamespacedKey displayKey;
+    private final Map<UUID, UUID> displays = new HashMap<>();
+    private final Set<UUID> enabledViewers = new HashSet<>();
     private BukkitTask task;
     private boolean enabled;
     private volatile Settings settings;
@@ -39,26 +38,30 @@ public final class TagDisplayManager {
     public TagDisplayManager(MLAntiCheat plugin, PlayerDataManager dataManager, Settings settings, TextConfig messages) {
         this.plugin = plugin;
         this.dataManager = dataManager;
-        this.messages = messages;
         this.settings = settings;
         this.enabled = settings.displayEnabled;
+        this.displayKey = new NamespacedKey(plugin, "score_display");
     }
 
     public void setSettings(Settings settings) {
         this.settings = settings;
+        this.enabled = settings.displayEnabled;
     }
 
     public void start() {
-        stop();
+        stopTask();
+        removeOrphans();
+        for (Player player : Bukkit.getOnlinePlayers()) attach(player);
         long interval = Math.max(1, settings.displayIntervalTicks);
         task = Bukkit.getScheduler().runTaskTimer(plugin, this::tick, interval, interval);
     }
 
     public void restart() {
+        shutdownDisplays();
         start();
     }
 
-    private void stop() {
+    private void stopTask() {
         if (task != null) {
             task.cancel();
             task = null;
@@ -68,125 +71,76 @@ public final class TagDisplayManager {
     private void tick() {
         Settings config = settings;
         for (Player player : Bukkit.getOnlinePlayers()) {
-            PlayerData data = dataManager.get(player);
-            data.decay(config.scoreDecay);
-            if (!enabled) {
-                continue;
-            }
-            TextDisplay display = displays.get(player.getUniqueId());
-            if (display == null || !display.isValid()) {
+            dataManager.get(player).decay(config.scoreDecay);
+            TextDisplay display = findDisplay(player.getUniqueId());
+            if (display == null || !display.isValid() || !player.equals(display.getVehicle())) {
                 attach(player);
-                continue;
+                display = findDisplay(player.getUniqueId());
             }
-            display.teleport(anchor(player, config));
-            display.text(buildLine(data, config));
-            syncViewers(player.getUniqueId(), display, config);
+            if (display != null) {
+                display.text(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                        .deserialize(buildText(player)));
+                applyVisibility(display);
+            }
         }
     }
 
     public void attach(Player player) {
-        if (!enabled) {
-            return;
-        }
-        Settings config = settings;
         detach(player.getUniqueId());
-        TextDisplay display = player.getWorld().spawn(anchor(player, config), TextDisplay.class, entity -> {
-            entity.setBillboard(Display.Billboard.CENTER);
-            entity.setBackgroundColor(Color.fromARGB(90, 0, 0, 0));
-            entity.setShadowed(false);
-            entity.setSeeThrough(false);
+        float offsetY = (float) settings.displayHeightOffset;
+        TextDisplay display = player.getWorld().spawn(player.getLocation(), TextDisplay.class, entity -> {
+            entity.getPersistentDataContainer().set(displayKey, PersistentDataType.BYTE, (byte) 1);
             entity.setPersistent(false);
-            entity.setViewRange(0.9f);
-            entity.setVisibleByDefault(false);
-            entity.setTeleportDuration(Math.max(1, config.displayIntervalTicks));
-            applyTransformation(entity, config);
-            entity.text(Component.empty());
+            entity.setInvulnerable(true);
+            entity.setGravity(false);
+            entity.setSilent(true);
+            entity.setBillboard(Display.Billboard.CENTER);
+            entity.setSeeThrough(false);
+            entity.setShadowed(true);
+            entity.setDefaultBackground(false);
+            entity.setBackgroundColor(Color.fromARGB(0, 0, 0, 0));
+            entity.setAlignment(TextDisplay.TextAlignment.CENTER);
+            entity.setLineWidth(500);
+            entity.setViewRange(1.0F);
+            Transformation transformation = entity.getTransformation();
+            transformation.getTranslation().set(new Vector3f(0.0F, offsetY, 0.0F));
+            entity.setTransformation(transformation);
+            entity.text(net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer.legacySection()
+                    .deserialize(buildText(player)));
         });
-        displays.put(player.getUniqueId(), display);
-        syncViewers(player.getUniqueId(), display, config);
-    }
-
-    private Location anchor(Player player, Settings config) {
-        Location location = player.getLocation();
-        location.setY(location.getY() + player.getHeight() + 0.55 + config.displayHeightOffset);
-        location.setPitch(0.0f);
-        location.setYaw(0.0f);
-        return location;
-    }
-
-    private void applyTransformation(TextDisplay display, Settings config) {
-        float scale = (float) config.displayScale;
-        display.setTransformation(new Transformation(
-                new Vector3f(0.0f, 0.0f, 0.0f),
-                new AxisAngle4f(),
-                new Vector3f(scale, scale, scale),
-                new AxisAngle4f()));
-    }
-
-    private void syncViewers(UUID owner, TextDisplay display, Settings config) {
-        for (Player viewer : Bukkit.getOnlinePlayers()) {
-            boolean permitted = !config.displayStaffOnly || viewer.hasPermission("mlac.tags");
-            boolean visible = permitted && !hiddenViewers.contains(viewer.getUniqueId()) && !viewer.getUniqueId().equals(owner);
-            if (visible) {
-                viewer.showEntity(plugin, display);
-            } else {
-                viewer.hideEntity(plugin, display);
-            }
-        }
+        player.addPassenger(display);
+        displays.put(player.getUniqueId(), display.getUniqueId());
+        applyVisibility(display);
     }
 
     public boolean toggle(Player viewer) {
         UUID uuid = viewer.getUniqueId();
         boolean visible;
-        if (hiddenViewers.remove(uuid)) {
-            visible = true;
-        } else {
-            hiddenViewers.add(uuid);
+        if (enabledViewers.remove(uuid)) {
             visible = false;
+        } else {
+            enabledViewers.add(uuid);
+            visible = true;
         }
-        syncViewer(viewer);
+        refreshViewer(viewer);
         return visible;
     }
 
     public void forgetViewer(UUID uuid) {
-        hiddenViewers.remove(uuid);
-    }
-
-    private void syncViewer(Player viewer) {
-        Settings config = settings;
-        for (Map.Entry<UUID, TextDisplay> entry : displays.entrySet()) {
-            TextDisplay display = entry.getValue();
-            if (display == null || !display.isValid()) {
-                continue;
-            }
-            boolean permitted = !config.displayStaffOnly || viewer.hasPermission("mlac.tags");
-            boolean visible = permitted && !hiddenViewers.contains(viewer.getUniqueId()) && !viewer.getUniqueId().equals(entry.getKey());
-            if (visible) {
-                viewer.showEntity(plugin, display);
-            } else {
-                viewer.hideEntity(plugin, display);
-            }
-        }
+        enabledViewers.remove(uuid);
     }
 
     public void detach(UUID uuid) {
-        TextDisplay display = displays.remove(uuid);
-        if (display != null) {
-            display.remove();
-        }
+        UUID displayId = displays.remove(uuid);
+        if (displayId == null) return;
+        Entity entity = Bukkit.getEntity(displayId);
+        if (entity != null) entity.remove();
     }
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-        if (!enabled) {
-            for (UUID uuid : displays.keySet().toArray(new UUID[0])) {
-                detach(uuid);
-            }
-            return;
-        }
-        for (Player player : Bukkit.getOnlinePlayers()) {
-            attach(player);
-        }
+        if (!enabled) enabledViewers.clear();
+        refreshAllVisibility();
     }
 
     public boolean isEnabled() {
@@ -194,28 +148,81 @@ public final class TagDisplayManager {
     }
 
     public void shutdown() {
-        stop();
-        for (UUID uuid : displays.keySet().toArray(new UUID[0])) {
-            detach(uuid);
-        }
-        hiddenViewers.clear();
+        stopTask();
+        shutdownDisplays();
+        removeOrphans();
+        enabledViewers.clear();
     }
 
-    private Component buildLine(PlayerData data, Settings config) {
+    private void shutdownDisplays() {
+        for (UUID displayId : displays.values()) {
+            Entity entity = Bukkit.getEntity(displayId);
+            if (entity != null) entity.remove();
+        }
+        displays.clear();
+    }
+
+    private TextDisplay findDisplay(UUID playerId) {
+        UUID displayId = displays.get(playerId);
+        if (displayId == null) return null;
+        Entity entity = Bukkit.getEntity(displayId);
+        return entity instanceof TextDisplay display ? display : null;
+    }
+
+    private void applyVisibility(TextDisplay display) {
+        for (Player viewer : Bukkit.getOnlinePlayers()) {
+            if (enabled && enabledViewers.contains(viewer.getUniqueId())) {
+                viewer.showEntity(plugin, display);
+            } else {
+                viewer.hideEntity(plugin, display);
+            }
+        }
+    }
+
+    private void refreshViewer(Player viewer) {
+        for (UUID displayId : displays.values()) {
+            Entity entity = Bukkit.getEntity(displayId);
+            if (!(entity instanceof TextDisplay display)) continue;
+            if (enabled && enabledViewers.contains(viewer.getUniqueId())) {
+                viewer.showEntity(plugin, display);
+            } else {
+                viewer.hideEntity(plugin, display);
+            }
+        }
+    }
+
+    private void refreshAllVisibility() {
+        for (Player viewer : Bukkit.getOnlinePlayers()) refreshViewer(viewer);
+    }
+
+    private void removeOrphans() {
+        for (World world : Bukkit.getWorlds()) {
+            for (TextDisplay display : world.getEntitiesByClass(TextDisplay.class)) {
+                if (display.getPersistentDataContainer().has(displayKey, PersistentDataType.BYTE)) display.remove();
+            }
+        }
+    }
+
+    private String buildText(Player player) {
+        PlayerData data = dataManager.get(player);
         double[] scores = data.snapshotScores();
-        Component line = Component.empty();
+        StringBuilder line = new StringBuilder();
         for (int i = 0; i < scores.length; i++) {
-            if (i > 0) line = line.append(messages.component("tag.separator", " ", Map.of()));
-            Map<String, Object> values = Map.of("name", PlayerData.SCORE_NAMES[i], "value", String.format(Locale.US, "%.2f", scores[i]));
-            line = line.append(messages.component("tag.label", "%name% ", values)).append(messages.component("tag.value", "%value%", values));
+            if (i > 0) line.append(" §8· ");
+            line.append("§7").append(PlayerData.SCORE_NAMES[i]).append(" ")
+                    .append(scoreColor(scores[i]))
+                    .append(String.format(Locale.US, "%.2f", scores[i]));
         }
-        return line;
+        line.append("\n§f").append(player.getName());
+        return line.toString();
     }
 
-    private TextColor gradient(double value) {
-        double clamped = Math.max(0.0, Math.min(1.0, value));
-        int red = (int) Math.round(90 + clamped * 165);
-        int green = (int) Math.round(230 - clamped * 200);
-        return TextColor.color(red, green, 90);
+    private String scoreColor(double score) {
+        if (score >= 0.95) return "§4";
+        if (score >= 0.80) return "§c";
+        if (score >= 0.60) return "§6";
+        if (score >= 0.40) return "§e";
+        if (score >= 0.20) return "§2";
+        return "§a";
     }
 }
