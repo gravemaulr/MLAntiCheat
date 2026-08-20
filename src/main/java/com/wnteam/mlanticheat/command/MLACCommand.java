@@ -194,7 +194,9 @@ public final class MLACCommand implements CommandExecutor, TabCompleter {
     }
 
     private void send(CommandSender sender, String path, Map<String, Object> values) {
-        sender.sendMessage(messages.component(path, path, values));
+        Map<String, Object> merged = new HashMap<>(values);
+        merged.put("prefix", plugin.getSettings().notifyPrefix);
+        sender.sendMessage(messages.component(path, path, merged));
     }
 
     private String format(double value) {
