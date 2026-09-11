@@ -15,6 +15,7 @@ import com.wnteam.mlanticheat.entity.DummyManager;
 import com.wnteam.mlanticheat.gui.AdminGui;
 import com.wnteam.mlanticheat.listener.CombatListener;
 import com.wnteam.mlanticheat.listener.ConnectionListener;
+import com.wnteam.mlanticheat.listener.DisplayListener;
 import com.wnteam.mlanticheat.listener.PacketRotationListener;
 import com.wnteam.mlanticheat.listener.RotationListener;
 import com.wnteam.mlanticheat.ml.AnomalyDetector;
@@ -86,6 +87,7 @@ public final class MLAntiCheat extends JavaPlugin {
         AdminGui gui = adminGui;
         PluginManager pm = Bukkit.getPluginManager();
         pm.registerEvents(new ConnectionListener(this, dataManager, statsStore, tagManager, trainingManager, nameCache), this);
+        pm.registerEvents(new DisplayListener(tagManager), this);
         pm.registerEvents(new RotationListener(this, dataManager, checkManager), this);
         pm.registerEvents(new CombatListener(this, dataManager, checkManager), this);
         pm.registerEvents(dummyManager, this);
