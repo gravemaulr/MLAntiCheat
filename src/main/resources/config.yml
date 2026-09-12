@@ -50,7 +50,7 @@ training:
 
 auto-training:
   # включает отложенное обучение по подтвержденным данным
-  enabled: false
+  enabled: true
   # ограничивает число сохраненных примеров одного игрока
   samples-per-player: 160
   # задает минимум примеров перед обработкой игрока
@@ -108,7 +108,7 @@ actions:
     # включает предупреждение администрации
     enabled: true
     # значение ml после которого работает правило
-    threshold: 0.82
+    threshold: 0.79
     # сколько анализов подряд нужно подтвердить
     confirmations: 4
     # пауза между предупреждениями
@@ -127,7 +127,7 @@ actions:
     # включает сохранение доказательств
     enabled: true
     # значение ml для сохранения доказательств
-    threshold: 0.90
+    threshold: 0.85
     # сколько анализов подряд нужно подтвердить
     confirmations: 6
     # пауза между файлами доказательств
@@ -139,14 +139,14 @@ actions:
     # сохраняет повороты удары и оценки в файл
     evidence: true
     # пока не отменяет удар
-    cancel-hit: false
+    cancel-hit: true
     # команды этого уровня
     commands: []
   block:
     # включает защиту от самых явных срабатываний
     enabled: true
     # значение ml для отмены ударов
-    threshold: 0.96
+    threshold: 0.76
     # сколько анализов подряд нужно подтвердить
     confirmations: 8
     # пауза между действиями правила
@@ -160,7 +160,8 @@ actions:
     # отменяет удары когда shadow mode выключен
     cancel-hit: true
     # можно добавить kick или ban когда модель проверена
-    commands: []
+    commands: 
+      - 'ban %player_name% 24d 2.2 | AI'
 
 display:
   # показывает оценку над игроками для администрации
@@ -176,9 +177,9 @@ display:
   # цвета оценок: %prec_color% %dyn_color% %pat_color% %trk_color% %ml_color%
   # поддерживаются цветовые коды через &
   lines:
-    - '&7PREC %prec_color%%prec% &8· &7DYN %dyn_color%%dyn% &8· &7PAT %pat_color%%pat% &8· &7TRK %trk_color%%trk% &8· &7ML %ml_color%%ml%'
+    - '&x&0&8&C&F&7&8%prec_color%%prec% &x&0&8&C&F&7&8%dyn_color%%dyn% &x&0&8&C&F&7&8%pat_color%%pat% &x&0&8&C&F&7&8%trk_color%%trk% &x&0&8&C&F&7&8%ml_color%%ml%'
     - '&f%player_name%'
 
 storage:
   # как часто сохранять модель и статистику игроков
-  autosave-minutes: 5
+  autosave-minutes: 2
