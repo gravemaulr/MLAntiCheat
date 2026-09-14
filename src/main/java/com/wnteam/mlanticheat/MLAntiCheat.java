@@ -155,6 +155,7 @@ public final class MLAntiCheat extends JavaPlugin {
     public Settings getSettings() { return settings; }
     public AlertDispatcher getAlertDispatcher() { return alertDispatcher; }
     public AutoTrainingManager getAutoTrainingManager() { return autoTrainingManager; }
+    public TrainingManager getTrainingManager() { return trainingManager; }
     public CheckManager getCheckManager() { return checkManager; }
     public PlayerDataManager getDataManager() { return dataManager; }
     public TargetScanner getTargetScanner() { return targetScanner; }
