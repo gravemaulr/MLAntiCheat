@@ -31,18 +31,20 @@ public final class AlertDispatcher {
     public boolean toggle(Player player) { if (!disabled.add(player.getUniqueId())) { disabled.remove(player.getUniqueId()); return true; } return false; }
     public boolean enabled(Player player) { return !disabled.contains(player.getUniqueId()); }
 
-    public void handle(Player player, PlayerData data, Settings settings) {
+    public void handle(Player player, PlayerData data, Settings settings) { handle(player, data, settings, false); }
+
+    public void handle(Player player, PlayerData data, Settings settings, boolean training) {
         double score = data.getLastPrediction();
         for (Settings.ActionRule rule : settings.actionRules) {
             if (!rule.enabled()) continue;
             int confirmations = data.updateRule(rule.id(), score >= rule.threshold());
             if (score < rule.threshold() || confirmations < rule.confirmations()) { suppressed.incrementAndGet(); continue; }
             if (!data.canRunRule(rule.id(), rule.cooldownMs())) continue;
-            execute(player, data, settings, rule, confirmations);
+            execute(player, data, settings, rule, confirmations, training);
         }
     }
 
-    private void execute(Player player, PlayerData data, Settings settings, Settings.ActionRule rule, int confirmations) {
+    private void execute(Player player, PlayerData data, Settings settings, Settings.ActionRule rule, int confirmations, boolean training) {
         String prefix = settings.shadowMode ? settings.notifyPrefix + " shadow" : settings.notifyPrefix;
         Map<String, Object> values = Map.of("prefix", prefix, "player", player.getName(), "score", format(data.getLastPrediction()), "raw_score", format(data.getRawScore()), "ping", data.getLastPing(), "tps", format(data.getLastTps()), "rule", rule.id(), "confirmations", confirmations, "required", rule.confirmations());
         data.recordDetection(rule.id());
@@ -55,17 +57,25 @@ public final class AlertDispatcher {
         }
         if (rule.console()) plugin.getLogger().warning(messages.plain("alert.console", "%player% | %rule%", values));
         if (rule.evidence()) evidence.dumpAsync(player.getName(), data, data.getLastPrediction(), data.getRawScore(), rule.id());
-        if (!settings.shadowMode) for (String command : rule.commands()) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), placeholders(command, player, data));
+        if (settings.shadowMode || training) return;
+        for (String command : rule.commands()) {
+            String line = placeholders(command, player, data);
+            if (Bukkit.isPrimaryThread()) Bukkit.dispatchCommand(Bukkit.getConsoleSender(), line);
+            else Bukkit.getScheduler().runTask(plugin, () -> Bukkit.dispatchCommand(Bukkit.getConsoleSender(), line));
+        }
     }
 
-    public boolean shouldCancel(Player player, PlayerData data, Settings settings) {
-        if (settings.shadowMode) return false;
+    public boolean shouldCancel(Player player, PlayerData data, Settings settings) { return shouldCancel(player, data, settings, false); }
+
+    public boolean shouldCancel(Player player, PlayerData data, Settings settings, boolean training) {
+        if (settings.shadowMode || training) return false;
         for (Settings.ActionRule rule : settings.actionRules) if (rule.enabled() && rule.cancelHit() && data.getLastPrediction() >= rule.threshold()) return true;
         return false;
     }
 
     private String placeholders(String value, Player player, PlayerData data) {
-        return value.replace("%player%", player.getName()).replace("%uuid%", player.getUniqueId().toString())
+        return value.replace("%player%", player.getName()).replace("%player_name%", player.getName())
+                .replace("%uuid%", player.getUniqueId().toString())
                 .replace("%score%", format(data.getLastPrediction())).replace("%raw_score%", format(data.getRawScore()))
                 .replace("%ping%", Integer.toString(data.getLastPing())).replace("%tps%", format(data.getLastTps()));
     }
