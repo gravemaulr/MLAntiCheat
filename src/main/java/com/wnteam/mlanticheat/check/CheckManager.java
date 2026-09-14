@@ -49,16 +49,22 @@ public final class CheckManager {
     public void handleTargetVisible(Player player) { if (!isExempt(player)) dataManager.get(player).markEnemyVisible(); }
     private void evaluate(Player player, PlayerData data, FeatureExtractor.Analysis analysis) {
         if (!analysis.combat()) return;
-        Settings config = settings; double[] features = analysis.toFeatures(); MLScores prediction = MLScores.evaluate(model, features);
+        Settings config = settings; UUID uuid = player.getUniqueId(); boolean labeled = training.isLabeled(uuid);
+        double[] features = analysis.toFeatures(); MLScores prediction = MLScores.evaluate(model, features);
         double reduction = config.correction(player.getPing(), tps); MLScores corrected = multiply(prediction, 1.0 - reduction);
         MLScores scores = corrected.smooth(data.mlScores(), config.smoothing);
         data.updateScores(scores, prediction.combined(), player.getPing(), tps);
-        training.feed(player.getUniqueId(), features);
-        plugin.getAutoTrainingManager().observe(player.getUniqueId(), features, scores.combined(), data.getConfirmations(), true);
-        alerts.handle(player, data, config);
+        training.feed(uuid, features);
+        if (!labeled) plugin.getAutoTrainingManager().observe(uuid, features, scores.combined(), data.getConfirmations(), true);
+        alerts.handle(player, data, config, labeled);
     }
     private MLScores multiply(MLScores value, double factor) { double[] score = value.values(); return new MLScores(score[0] * factor, score[1] * factor, score[2] * factor, score[3] * factor, score[4] * factor); }
     private double boxDistance(Location eye, BoundingBox box) { double x = Math.max(box.getMinX(), Math.min(eye.getX(), box.getMaxX())); double y = Math.max(box.getMinY(), Math.min(eye.getY(), box.getMaxY())); double z = Math.max(box.getMinZ(), Math.min(eye.getZ(), box.getMaxZ())); return Math.sqrt(Math.pow(eye.getX() - x, 2) + Math.pow(eye.getY() - y, 2) + Math.pow(eye.getZ() - z, 2)); }
     public void forget(UUID uuid) { alerts.forget(uuid); }
-    private boolean isExempt(Player player) { GameMode mode = player.getGameMode(); return player.hasPermission("mlac.bypass") || player.isDead() || mode == GameMode.CREATIVE || mode == GameMode.SPECTATOR; }
+    private boolean isExempt(Player player) {
+        GameMode mode = player.getGameMode();
+        if (player.isDead() || mode == GameMode.SPECTATOR) return true;
+        if (training.isLabeled(player.getUniqueId())) return false;
+        return mode == GameMode.CREATIVE || player.hasPermission("mlac.bypass");
+    }
 }
