@@ -35,7 +35,11 @@ public final class CombatListener implements Listener {
             return;
         }
         PlayerData data = dataManager.find(attacker.getUniqueId());
-        if (data != null && plugin.getAlertDispatcher().shouldCancel(attacker, data, settings)) {
+        if (data == null) {
+            return;
+        }
+        boolean training = plugin.getTrainingManager().isLabeled(attacker.getUniqueId());
+        if (plugin.getAlertDispatcher().shouldCancel(attacker, data, settings, training)) {
             event.setCancelled(true);
         }
     }
