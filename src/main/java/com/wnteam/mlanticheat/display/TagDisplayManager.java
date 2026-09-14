@@ -6,10 +6,9 @@ import com.wnteam.mlanticheat.config.Settings;
 import com.wnteam.mlanticheat.config.TextConfig;
 import com.wnteam.mlanticheat.data.PlayerData;
 import com.wnteam.mlanticheat.data.PlayerDataManager;
+import com.wnteam.mlanticheat.util.TextColors;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Color;
 import org.bukkit.NamespacedKey;
 import org.bukkit.World;
@@ -248,7 +247,7 @@ public final class TagDisplayManager {
     }
 
     private Component render(Player player) {
-        return LegacyComponentSerializer.legacySection().deserialize(buildText(player));
+        return TextColors.legacy(buildText(player));
     }
 
     private String buildText(Player player) {
@@ -272,16 +271,16 @@ public final class TagDisplayManager {
             result = result.replace("%" + name + "%", String.format(Locale.US, "%.2f", scores[i]));
             result = result.replace("%" + name + "_color%", scoreColor(scores[i]));
         }
-        return ChatColor.translateAlternateColorCodes('&', result);
+        return result;
     }
 
     private String scoreColor(double score) {
-        if (score >= 0.95) return "\u00a74";
-        if (score >= 0.80) return "\u00a7c";
-        if (score >= 0.60) return "\u00a76";
-        if (score >= 0.40) return "\u00a7e";
-        if (score >= 0.20) return "\u00a72";
-        return "\u00a7a";
+        if (score >= 0.95) return "&#8B0000";
+        if (score >= 0.80) return "&#FF4C4C";
+        if (score >= 0.60) return "&#FF9D2E";
+        if (score >= 0.40) return "&#FFE04C";
+        if (score >= 0.20) return "&#5BD75B";
+        return "&#08CF78";
     }
 
     private static final class Tag {
