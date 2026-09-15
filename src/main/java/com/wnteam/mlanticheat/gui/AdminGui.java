@@ -5,6 +5,7 @@ import com.wnteam.mlanticheat.data.PlayerData;
 import com.wnteam.mlanticheat.data.PlayerDataManager;
 import com.wnteam.mlanticheat.data.PlayerStatsStore;
 import com.wnteam.mlanticheat.ml.TrainingManager;
+import com.wnteam.mlanticheat.report.ReportManager;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -31,7 +32,7 @@ public final class AdminGui implements Listener {
     private enum Sort { MAX_RISK, CURRENT_RISK, ALERTS, LAST_SEEN, NAME }
     private enum Screen { LIST, CARD, HISTORY }
     private record View(int page, Sort sort, String query, UUID inspected, boolean history) {}
-    private record Entry(UUID uuid, String name, boolean online, double[] scores, double raw, long analyses, long alerts, double average, double maximum, int ping, double tps, long lastSeen, List<PlayerData.Detection> history) {}
+    private record Entry(UUID uuid, String name, boolean online, double[] scores, double raw, long analyses, long alerts, double average, double maximum, int ping, double tps, long lastSeen, List<PlayerData.Detection> history, int reports, int punishments) {}
     private static final class GuiHolder implements InventoryHolder {
         private final UUID viewer; private final Screen screen; private Inventory inventory;
         private GuiHolder(UUID viewer, Screen screen) { this.viewer = viewer; this.screen = screen; }
@@ -42,20 +43,23 @@ public final class AdminGui implements Listener {
     private final PlayerDataManager data;
     private final PlayerStatsStore store;
     private final TrainingManager training;
+    private final ReportManager reports;
     private final NamespacedKey playerKey;
+    private volatile String command = "mlac";
     private final NamespacedKey actionKey;
     private final Map<UUID, View> views = new HashMap<>();
     private final TextConfig gui;
     private final TextConfig messages;
     private BukkitTask refreshTask;
 
-    public AdminGui(JavaPlugin plugin, PlayerDataManager data, PlayerStatsStore store, TrainingManager training, TextConfig gui, TextConfig messages) {
-        this.plugin = plugin; this.data = data; this.store = store; this.training = training; this.gui = gui; this.messages = messages;
+    public AdminGui(JavaPlugin plugin, PlayerDataManager data, PlayerStatsStore store, TrainingManager training, ReportManager reports, TextConfig gui, TextConfig messages) {
+        this.plugin = plugin; this.data = data; this.store = store; this.training = training; this.reports = reports; this.gui = gui; this.messages = messages;
         playerKey = new NamespacedKey(plugin, "gui-player"); actionKey = new NamespacedKey(plugin, "gui-action"); restart();
     }
 
     public void reload() { gui.reload(); messages.reload(); restart(); }
     private void restart() { if (refreshTask != null) refreshTask.cancel(); long ticks = Math.max(1, gui.longValue("update-ticks", 20)); refreshTask = Bukkit.getScheduler().runTaskTimer(plugin, this::refresh, ticks, ticks); }
+    public void setCommandLabel(String label) { this.command = label; }
     public void open(Player viewer) { open(viewer, ""); }
     public void open(Player viewer, String query) { views.put(viewer.getUniqueId(), new View(0, Sort.MAX_RISK, query == null ? "" : query, null, false)); renderList(viewer); }
     public void inspect(Player viewer, Player target) { inspect(viewer, target.getUniqueId()); }
@@ -75,7 +79,7 @@ public final class AdminGui implements Listener {
         List<Integer> slots = slots(gui.string("list.content-slots", "0-44"), size("list.size", 54));
         int perPage = Math.max(1, slots.size()), pages = Math.max(1, (entries.size() + perPage - 1) / perPage), page = Math.max(0, Math.min(view.page(), pages - 1));
         if (page != view.page()) { view = new View(page, view.sort(), view.query(), null, false); views.put(viewer.getUniqueId(), view); }
-        Map<String, Object> vars = vars("page", page + 1, "pages", pages, "query", view.query(), "sort", view.sort().name().toLowerCase(Locale.ROOT), "search", view.query().isBlank() ? messages.string("status.all-players", "all players") : messages.plain("status.search", "search %query%", vars("query", view.query())), "seconds", gui.longValue("update-ticks", 20) / 20.0);
+        Map<String, Object> vars = vars("page", page + 1, "pages", pages, "query", view.query(), "sort", view.sort().name().toLowerCase(Locale.ROOT), "search", view.query().isBlank() ? messages.string("status.all-players", "all players") : messages.plain("status.search", "search %query%", vars("query", view.query())), "seconds", gui.longValue("update-ticks", 20) / 20.0, "command", command);
         Inventory inventory = create(viewer, Screen.LIST, size("list.size", 54), gui.component("list.title", "MLAC players %page%/%pages%", vars)); fill(inventory);
         int start = page * perPage;
         for (int i = start; i < Math.min(entries.size(), start + perPage); i++) inventory.setItem(slots.get(i - start), playerItem(entries.get(i)));
@@ -89,7 +93,7 @@ public final class AdminGui implements Listener {
         Map<String, Object> base = entryVars(e); Inventory inv = create(viewer, Screen.CARD, size("card.size", 45), gui.component("card.title", "MLAC %player%", base)); fill(inv);
         List<Integer> scoreSlots = integerList("card.score-slots", List.of(10,11,12,13,14)); List<String> materials = gui.list("card.score-materials");
         for (int i = 0; i < Math.min(5, scoreSlots.size()); i++) { Map<String,Object> v = new HashMap<>(base); v.put("score_name", PlayerData.SCORE_NAMES[i]); v.put("score", format(e.scores()[i])); String material = i < materials.size() ? materials.get(i) : "STONE"; inv.setItem(scoreSlots.get(i), item(resolve(material, e.scores()[4], e.online()), gui.component("card.score-name", "%score_name% %score%", v), gui.components("card.score-lore", v), e.uuid(), "none")); }
-        configured(inv, "card.items.status", base, e.uuid()); configured(inv, "card.items.statistics", base, e.uuid()); configured(inv, "card.items.risk", base, e.uuid()); configured(inv, "card.items.back", base, null);
+        configured(inv, "card.items.status", base, e.uuid()); configured(inv, "card.items.statistics", base, e.uuid()); configured(inv, "card.items.risk", base, e.uuid()); configured(inv, "card.items.reports", base, e.uuid()); configured(inv, "card.items.back", base, null);
         if (e.online()) { configured(inv, "card.items.legit", base, e.uuid()); configured(inv, "card.items.stop", base, e.uuid()); configured(inv, "card.items.cheat", base, e.uuid()); }
         show(viewer, inv, Screen.CARD);
     }
@@ -104,7 +108,7 @@ public final class AdminGui implements Listener {
 
     private void configured(Inventory inv, String path, Map<String,Object> vars, UUID uuid) { int slot = gui.integer(path + ".slot", -1); if (slot < 0 || slot >= inv.getSize()) return; String action = gui.string(path + ".action", "none"); Material material = resolve(gui.string(path + ".material", "STONE"), number(vars.get("ml")), "online".equals(vars.get("status"))); inv.setItem(slot, item(material, gui.component(path + ".name", " ", vars), gui.components(path + ".lore", vars), uuid, action)); }
     private ItemStack playerItem(Entry e) { Map<String,Object> v = entryVars(e); return item(resolve(gui.string("list.player.material-" + riskName(Math.max(e.scores()[4], e.maximum())), "STONE"), e.scores()[4], e.online()), gui.component("list.player.name", "%player%",v), gui.components("list.player.lore",v),e.uuid(),"inspect"); }
-    private Map<String,Object> entryVars(Entry e) { return vars("player",e.name(),"status",messages.string("status."+(e.online()?"online":"offline"),e.online()?"online":"offline"),"ml",format(e.scores()[4]),"raw",format(e.raw()),"max",format(e.maximum()),"average",format(e.average()),"analyses",e.analyses(),"alerts",e.alerts(),"ping",e.ping(),"tps",format(e.tps()),"seen",age(e.lastSeen()),"history",e.history().size(),"risk",riskName(e.scores()[4])); }
+    private Map<String,Object> entryVars(Entry e) { return vars("player",e.name(),"status",messages.string("status."+(e.online()?"online":"offline"),e.online()?"online":"offline"),"ml",format(e.scores()[4]),"raw",format(e.raw()),"max",format(e.maximum()),"average",format(e.average()),"analyses",e.analyses(),"alerts",e.alerts(),"ping",e.ping(),"tps",format(e.tps()),"seen",age(e.lastSeen()),"history",e.history().size(),"risk",riskName(e.scores()[4]),"reports",e.reports(),"reports_max",reports.maximum(),"reports_left",Math.max(0,reports.maximum()-e.reports()),"punishments",e.punishments(),"command",command); }
     private void fill(Inventory inv) { if (!gui.bool("fillers.enabled",false)) return; ItemStack filler=item(resolve(gui.string("fillers.material","GRAY_STAINED_GLASS_PANE"),0,false),gui.component("fillers.name"," ",Map.of()),gui.components("fillers.lore",Map.of()),null,"none"); for(int i=0;i<inv.getSize();i++) inv.setItem(i,filler); }
     private Inventory create(Player viewer, Screen screen, int size, Component title) { GuiHolder h=new GuiHolder(viewer.getUniqueId(),screen); h.inventory=Bukkit.createInventory(h,size,title); return h.inventory; }
     private int size(String path,int fallback) { int value=gui.integer(path,fallback); value=Math.max(9,Math.min(54,value)); return value-value%9; }
@@ -119,8 +123,8 @@ public final class AdminGui implements Listener {
     private void backToList(Player p,View v){views.put(p.getUniqueId(),new View(v.page(),v.sort(),v.query(),null,false));renderList(p);}
     private List<Entry> entries(String q){Map<UUID,Entry> out=new LinkedHashMap<>();for(PlayerStatsStore.Snapshot s:store.all())out.put(s.uuid(),from(s));for(Player p:Bukkit.getOnlinePlayers())out.put(p.getUniqueId(),live(p));String f=q.toLowerCase(Locale.ROOT);return out.values().stream().filter(e->e.name().toLowerCase(Locale.ROOT).contains(f)).collect(java.util.stream.Collectors.toCollection(ArrayList::new));}
     private Entry entry(UUID id){if(id==null)return null;Player p=Bukkit.getPlayer(id);if(p!=null)return live(p);PlayerStatsStore.Snapshot s=store.find(id);return s==null?null:from(s);}
-    private Entry live(Player p){PlayerData d=data.get(p);return new Entry(p.getUniqueId(),p.getName(),true,d.snapshotScores(),d.getRawScore(),d.getAnalyses(),d.getAlerts(),d.getCombinedAverage(),d.getCombinedMax(),p.getPing(),d.getLastTps(),d.getLastSeen(),d.detectionSnapshot());}
-    private Entry from(PlayerStatsStore.Snapshot s){return new Entry(s.uuid(),s.name(),false,s.scores(),s.rawScore(),s.analyses(),s.alerts(),s.average(),s.maximum(),s.ping(),s.tps(),s.lastSeen(),s.detections());}
+    private Entry live(Player p){PlayerData d=data.get(p);return new Entry(p.getUniqueId(),p.getName(),true,d.snapshotScores(),d.getRawScore(),d.getAnalyses(),d.getAlerts(),d.getCombinedAverage(),d.getCombinedMax(),p.getPing(),d.getLastTps(),d.getLastSeen(),d.detectionSnapshot(),reports.count(p.getUniqueId()),reports.punishments(p.getUniqueId()));}
+    private Entry from(PlayerStatsStore.Snapshot s){return new Entry(s.uuid(),s.name(),false,s.scores(),s.rawScore(),s.analyses(),s.alerts(),s.average(),s.maximum(),s.ping(),s.tps(),s.lastSeen(),s.detections(),reports.count(s.uuid()),reports.punishments(s.uuid()));}
     private Comparator<Entry> comparator(Sort s){return switch(s){case MAX_RISK->Comparator.comparingDouble(Entry::maximum).reversed();case CURRENT_RISK->Comparator.comparingDouble((Entry e)->e.scores()[4]).reversed();case ALERTS->Comparator.comparingLong(Entry::alerts).reversed();case LAST_SEEN->Comparator.comparingLong(Entry::lastSeen).reversed();case NAME->Comparator.comparing(Entry::name,String.CASE_INSENSITIVE_ORDER);};}
     private Material riskMaterial(double r){return resolve(gui.string("list.player.material-"+riskName(r),"STONE"),0,false);}
     private String riskName(double r){double c=gui.decimal("risk.critical",.90),h=gui.decimal("risk.high",.75),m=gui.decimal("risk.medium",.50);String key=r>=c?"critical":r>=h?"high":r>=m?"medium":"low";return gui.string("risk.names."+key,key);}
