@@ -26,20 +26,35 @@ public final class AutoTrainingManager {
     private static final int CONFIRMED_CHEATER = 1;
 
     private final JavaPlugin plugin;
+    private final EnsembleModel model;
     private final TrainingManager trainingManager;
     private final File stateFile;
     private final Map<UUID, Subject> subjects = new ConcurrentHashMap<>();
+    private volatile boolean holdLogged;
     private long lastRunDay = -1L;
 
     public AutoTrainingManager(JavaPlugin plugin, EnsembleModel model, TrainingManager trainingManager) {
         this.plugin = plugin;
+        this.model = model;
         this.trainingManager = trainingManager;
         this.stateFile = new File(plugin.getDataFolder(), "auto-training.yml");
         load();
     }
 
+    public boolean isEnabled() {
+        return plugin.getConfig().getBoolean("auto-training.enabled", true);
+    }
+
+    public boolean isActive() {
+        return isEnabled() && model.isReady();
+    }
+
+    public boolean isWaitingForModel() {
+        return isEnabled() && !model.isReady();
+    }
+
     public void observe(UUID uuid, double[] features, double heuristicScore, int violations, boolean combat) {
-        if (!plugin.getConfig().getBoolean("auto-training.enabled", true) || features.length != FEATURE_COUNT) {
+        if (!isActive() || features.length != FEATURE_COUNT) {
             return;
         }
         Subject subject = subjects.computeIfAbsent(uuid, ignored -> new Subject(System.currentTimeMillis()));
@@ -57,7 +72,7 @@ public final class AutoTrainingManager {
 
     public int applyVerdict(UUID uuid, boolean cheater, double weight) {
         Subject subject = subjects.get(uuid);
-        if (subject == null) {
+        if (subject == null || !isActive()) {
             return 0;
         }
         boolean combatOnly = cheater
@@ -124,9 +139,19 @@ public final class AutoTrainingManager {
     }
 
     public void runDaily() {
-        if (!plugin.getConfig().getBoolean("auto-training.enabled", true)) {
+        if (!isEnabled()) {
             return;
         }
+        if (!model.isReady()) {
+            if (!holdLogged) {
+                holdLogged = true;
+                plugin.getLogger().info("Automatic training is on hold until the model is ready: "
+                        + model.getPositiveSamples() + " cheat and " + model.getNegativeSamples()
+                        + " legit samples collected so far.");
+            }
+            return;
+        }
+        holdLogged = false;
         long day = System.currentTimeMillis() / 86400000L;
         if (day == lastRunDay) {
             return;
