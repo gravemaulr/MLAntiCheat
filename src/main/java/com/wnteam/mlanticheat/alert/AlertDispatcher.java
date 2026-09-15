@@ -3,6 +3,7 @@ package com.wnteam.mlanticheat.alert;
 import com.wnteam.mlanticheat.config.Settings;
 import com.wnteam.mlanticheat.config.TextConfig;
 import com.wnteam.mlanticheat.data.PlayerData;
+import com.wnteam.mlanticheat.report.ReportManager;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
@@ -23,6 +24,7 @@ public final class AlertDispatcher {
     private final TextConfig messages;
     private final Set<UUID> disabled = ConcurrentHashMap.newKeySet();
     private final AtomicLong dispatched = new AtomicLong(), suppressed = new AtomicLong();
+    private volatile ReportManager reports;
 
     public AlertDispatcher(JavaPlugin plugin, EvidenceRecorder evidence, TextConfig messages) { this.plugin = plugin; this.evidence = evidence; this.messages = messages; }
     public void forget(UUID uuid) { disabled.remove(uuid); }
@@ -30,6 +32,8 @@ public final class AlertDispatcher {
     public long getSuppressed() { return suppressed.get(); }
     public boolean toggle(Player player) { if (!disabled.add(player.getUniqueId())) { disabled.remove(player.getUniqueId()); return true; } return false; }
     public boolean enabled(Player player) { return !disabled.contains(player.getUniqueId()); }
+
+    public void setReports(ReportManager reports) { this.reports = reports; }
 
     public void handle(Player player, PlayerData data, Settings settings) { handle(player, data, settings, false); }
 
@@ -50,13 +54,14 @@ public final class AlertDispatcher {
         data.recordDetection(rule.id());
         if (rule.staffAlert()) {
             Component message = messages.component("alert.staff", "%prefix% %player%", values)
-                    .clickEvent(ClickEvent.runCommand("/mlac inspect " + player.getName()))
+                    .clickEvent(ClickEvent.runCommand("/" + settings.commandName + " inspect " + player.getName()))
                     .hoverEvent(HoverEvent.showText(messages.component("alert.hover", "open player card", values)));
             data.recordAlert(); dispatched.incrementAndGet();
             for (Player staff : Bukkit.getOnlinePlayers()) if (staff.hasPermission("mlac.alerts") && enabled(staff)) staff.sendMessage(message);
         }
         if (rule.console()) plugin.getLogger().warning(messages.plain("alert.console", "%player% | %rule%", values));
         if (rule.evidence()) evidence.dumpAsync(player.getName(), data, data.getLastPrediction(), data.getRawScore(), rule.id());
+        if (rule.report() && !training && reports != null) reports.report(player, rule.id(), data.getLastPrediction());
         if (settings.shadowMode || training) return;
         for (String command : rule.commands()) {
             String line = placeholders(command, player, data);
