@@ -37,7 +37,7 @@ public final class TagDisplayManager {
     private final PlayerDataManager dataManager;
     private final NamespacedKey displayKey;
     private final Map<UUID, Tag> tags = new ConcurrentHashMap<>();
-    private final Set<UUID> enabledViewers = ConcurrentHashMap.newKeySet();
+    private final Set<UUID> overrides = ConcurrentHashMap.newKeySet();
     private BukkitTask task;
     private boolean enabled;
     private volatile Settings settings;
@@ -73,7 +73,7 @@ public final class TagDisplayManager {
         stopTask();
         removeAll();
         purgeWorlds();
-        enabledViewers.clear();
+        overrides.clear();
     }
 
     private void stopTask() {
@@ -88,6 +88,7 @@ public final class TagDisplayManager {
         boolean verify = ++cycle % STATE_CHECK_CYCLES == 0;
         for (Player player : Bukkit.getOnlinePlayers()) {
             dataManager.get(player).decay(config.scoreDecay);
+            if (verify) refreshViewer(player);
             Tag tag = tags.get(player.getUniqueId());
             if (tag == null || !tag.display.isValid() || !player.equals(tag.display.getVehicle())
                     || !player.getWorld().equals(tag.display.getWorld())) {
@@ -132,7 +133,7 @@ public final class TagDisplayManager {
             return;
         }
         tags.put(uuid, new Tag(display, skinFingerprint(player)));
-        applyVisibility(display);
+        applyVisibility(uuid, display);
         refreshViewer(player);
     }
 
@@ -153,24 +154,18 @@ public final class TagDisplayManager {
 
     public boolean toggle(Player viewer) {
         UUID uuid = viewer.getUniqueId();
-        boolean visible;
-        if (enabledViewers.remove(uuid)) {
-            visible = false;
-        } else {
-            enabledViewers.add(uuid);
-            visible = true;
-        }
+        if (!overrides.remove(uuid)) overrides.add(uuid);
         refreshViewer(viewer);
-        return visible;
+        return visibleFor(viewer, null);
     }
 
     public void forgetViewer(UUID uuid) {
-        enabledViewers.remove(uuid);
+        overrides.remove(uuid);
     }
 
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-        if (!enabled) enabledViewers.clear();
+        if (!enabled) overrides.clear();
         for (Player viewer : Bukkit.getOnlinePlayers()) refreshViewer(viewer);
     }
 
@@ -211,9 +206,9 @@ public final class TagDisplayManager {
         return display.getPersistentDataContainer().has(displayKey, PersistentDataType.BYTE);
     }
 
-    private void applyVisibility(TextDisplay display) {
+    private void applyVisibility(UUID owner, TextDisplay display) {
         for (Player viewer : Bukkit.getOnlinePlayers()) {
-            if (visibleFor(viewer)) {
+            if (visibleFor(viewer, owner)) {
                 viewer.showEntity(plugin, display);
             } else {
                 viewer.hideEntity(plugin, display);
@@ -222,18 +217,22 @@ public final class TagDisplayManager {
     }
 
     private void refreshViewer(Player viewer) {
-        boolean visible = visibleFor(viewer);
-        for (Tag tag : tags.values()) {
-            if (visible) {
-                viewer.showEntity(plugin, tag.display);
+        for (Map.Entry<UUID, Tag> entry : tags.entrySet()) {
+            if (visibleFor(viewer, entry.getKey())) {
+                viewer.showEntity(plugin, entry.getValue().display);
             } else {
-                viewer.hideEntity(plugin, tag.display);
+                viewer.hideEntity(plugin, entry.getValue().display);
             }
         }
     }
 
-    private boolean visibleFor(Player viewer) {
-        return enabled && enabledViewers.contains(viewer.getUniqueId());
+    private boolean visibleFor(Player viewer, UUID owner) {
+        Settings config = settings;
+        if (!enabled) return false;
+        if (owner != null && config.displayHideOwn && owner.equals(viewer.getUniqueId())) return false;
+        String permission = config.displayPermission;
+        if (permission != null && !permission.isBlank() && !viewer.hasPermission(permission)) return false;
+        return config.displayDefaultVisible != overrides.contains(viewer.getUniqueId());
     }
 
     private int skinFingerprint(Player player) {
