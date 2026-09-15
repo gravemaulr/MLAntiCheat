@@ -68,6 +68,8 @@ public final class PlayerData {
     public synchronized boolean inCombat(long window) { return lastAttack > 0 && System.currentTimeMillis() - lastAttack <= window; }
     public synchronized long getLastAttack() { return lastAttack; }
     public synchronized double getLastReach() { return lastReach; }
+    public synchronized int attacksWithin(long window) { long now = System.currentTimeMillis(); int count = 0; for (Long time : attacks) if (now - time <= window) count++; return count; }
+    public synchronized long combatSpan(long window) { long now = System.currentTimeMillis(); for (Long time : attacks) if (now - time <= window) return now - time; return 0L; }
     public synchronized double attacksPerSecond() { if (attacks.size() < 3) return 0; long span = attacks.peekLast() - attacks.peekFirst(); return span <= 0 ? 0 : (attacks.size() - 1) * 1000.0 / span; }
     public synchronized double[] attackIntervalStats() {
         if (attacks.size() < 4) return new double[]{0, 0, 0}; Long[] copy = attacks.toArray(new Long[0]); double[] delta = new double[copy.length - 1]; double sum = 0;
