@@ -1,5 +1,7 @@
 package com.wnteam.mlanticheat.ml;
 
+import java.util.Arrays;
+
 public final class LogisticModel {
 
     private final int dimension;
@@ -37,6 +39,12 @@ public final class LogisticModel {
         }
         bias -= learningRate * error * 0.5;
         bias = Math.max(-8.0, Math.min(8.0, bias));
+    }
+
+    public synchronized void reset() {
+        Arrays.fill(weights, 0.0);
+        Arrays.fill(momentum, 0.0);
+        bias = -2.0;
     }
 
     public synchronized void setLearningRate(double value) {

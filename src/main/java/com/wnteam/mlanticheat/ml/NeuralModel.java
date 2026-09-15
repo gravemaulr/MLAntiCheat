@@ -21,15 +21,24 @@ public final class NeuralModel {
         this.w2 = new double[hidden];
         this.learningRate = learningRate;
         this.l2 = l2;
+        initialize();
+    }
+
+    public synchronized void reset() {
+        initialize();
+    }
+
+    private void initialize() {
         Random random = new Random(918273645L);
         double scale = Math.sqrt(2.0 / dimension);
         for (int h = 0; h < hidden; h++) {
             for (int i = 0; i < dimension; i++) {
                 w1[h][i] = random.nextGaussian() * scale;
             }
+            b1[h] = 0.0;
             w2[h] = random.nextGaussian() * Math.sqrt(1.0 / hidden);
         }
-        this.b2 = -2.0;
+        b2 = -2.0;
     }
 
     public synchronized double predict(double[] standardized) {

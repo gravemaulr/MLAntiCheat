@@ -1,5 +1,7 @@
 package com.wnteam.mlanticheat.ml;
 
+import java.util.Arrays;
+
 public final class Standardizer {
 
     private static final double VARIANCE_FLOOR = 1.0E-4;
@@ -23,6 +25,12 @@ public final class Standardizer {
             mean[i] += delta / count;
             m2[i] += delta * (features[i] - mean[i]);
         }
+    }
+
+    public synchronized void reset() {
+        Arrays.fill(mean, 0.0);
+        Arrays.fill(m2, 0.0);
+        count = 0;
     }
 
     public synchronized double[] transform(double[] features) {

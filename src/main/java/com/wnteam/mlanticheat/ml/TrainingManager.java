@@ -12,33 +12,35 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public final class TrainingManager {
 
-    private static final int BUFFER_CAPACITY = 6000;
     private static final int RECENT_CAPACITY = 64;
 
     private final EnsembleModel model;
     private final AnomalyDetector baseline;
+    private final BalancedDataset dataset;
     private final Map<UUID, Double> labels = new ConcurrentHashMap<>();
     private final Map<UUID, Deque<double[]>> recent = new ConcurrentHashMap<>();
-    private final Deque<double[]> cheatBuffer = new ArrayDeque<>(BUFFER_CAPACITY);
-    private final Deque<double[]> cleanBuffer = new ArrayDeque<>(BUFFER_CAPACITY);
     private final Random random = new Random();
     private final AtomicLong sessionSamples = new AtomicLong();
     private final AtomicLong cleanSamples = new AtomicLong();
     private final AtomicLong cheatSamples = new AtomicLong();
     private final AtomicLong feedbackSamples = new AtomicLong();
+    private final AtomicLong pairedSamples = new AtomicLong();
+    private final BalancedDataset.PairConsumer trainer = this::train;
 
     private int replayBatch = 24;
     private int replayInterval = 40;
     private long sinceReplay;
 
-    public TrainingManager(EnsembleModel model, AnomalyDetector baseline) {
+    public TrainingManager(EnsembleModel model, AnomalyDetector baseline, BalancedDataset dataset) {
         this.model = model;
         this.baseline = baseline;
+        this.dataset = dataset;
     }
 
-    public void configure(int replayBatch, int replayInterval) {
+    public void configure(int replayBatch, int replayInterval, int capacity) {
         this.replayBatch = Math.max(4, replayBatch);
         this.replayInterval = Math.max(8, replayInterval);
+        dataset.setCapacity(capacity);
     }
 
     public void setLabel(UUID uuid, double label) {
@@ -70,16 +72,12 @@ public final class TrainingManager {
         return labels.size();
     }
 
-    public synchronized void trainAutomatic(double[] features, double label) {
+    public void trainAutomatic(double[] features, double label) {
         trainAutomatic(features, label, 1.0);
     }
 
-    public synchronized void trainAutomatic(double[] features, double label, double weight) {
-        model.train(features, label, weight);
-        store(features, label >= 0.5);
-        if (label < 0.5) {
-            baseline.update(features);
-        }
+    public void trainAutomatic(double[] features, double label, double weight) {
+        submit(features, label, weight);
     }
 
     public void feed(UUID uuid, double[] features) {
@@ -88,33 +86,17 @@ public final class TrainingManager {
         if (label == null) {
             return;
         }
-        model.train(features, label);
-        store(features, label >= 0.5);
+        submit(features, label, 1.0);
         sessionSamples.incrementAndGet();
         if (label >= 0.5) {
             cheatSamples.incrementAndGet();
         } else {
             cleanSamples.incrementAndGet();
-            baseline.update(features);
-        }
-        if (++sinceReplay >= replayInterval) {
-            sinceReplay = 0;
-            replay();
         }
     }
 
     public void feedPassiveBaseline(double[] features) {
         baseline.update(features);
-    }
-
-    private void remember(UUID uuid, double[] features) {
-        Deque<double[]> buffer = recent.computeIfAbsent(uuid, ignored -> new ArrayDeque<>(RECENT_CAPACITY));
-        synchronized (buffer) {
-            buffer.addLast(features.clone());
-            while (buffer.size() > RECENT_CAPACITY) {
-                buffer.pollFirst();
-            }
-        }
     }
 
     public int applyFeedback(UUID uuid, double label, double weight) {
@@ -127,11 +109,7 @@ public final class TrainingManager {
             snapshot = new ArrayList<>(buffer);
         }
         for (double[] features : snapshot) {
-            model.train(features, label, weight);
-            store(features, label >= 0.5);
-            if (label < 0.5) {
-                baseline.update(features);
-            }
+            submit(features, label, weight);
         }
         feedbackSamples.addAndGet(snapshot.size());
         return snapshot.size();
@@ -147,32 +125,72 @@ public final class TrainingManager {
         }
     }
 
-    private void store(double[] features, boolean cheater) {
-        Deque<double[]> buffer = cheater ? cheatBuffer : cleanBuffer;
-        synchronized (buffer) {
-            buffer.addLast(features.clone());
-            while (buffer.size() > BUFFER_CAPACITY) {
-                buffer.pollFirst();
-            }
+    public int rebalance() {
+        model.reset();
+        int pairs = dataset.replay(trainer);
+        pairedSamples.set(pairs);
+        sinceReplay = 0;
+        return pairs;
+    }
+
+    public int balancedPairs() {
+        return dataset.balanced();
+    }
+
+    public int queuedSamples() {
+        return dataset.surplus();
+    }
+
+    public long getPairedSamples() {
+        return pairedSamples.get();
+    }
+
+    private void submit(double[] features, double label, double weight) {
+        if (label < 0.5) {
+            baseline.update(features);
         }
+        dataset.add(features, label >= 0.5, weight);
+        int pairs = dataset.consume(trainer);
+        if (pairs == 0) {
+            return;
+        }
+        pairedSamples.addAndGet(pairs);
+        sinceReplay += pairs;
+        if (sinceReplay >= replayInterval) {
+            sinceReplay = 0;
+            replay();
+        }
+    }
+
+    private void train(BalancedDataset.Sample positive, BalancedDataset.Sample negative) {
+        model.trainPair(BalancedDataset.features(positive), positive.weight(),
+                BalancedDataset.features(negative), negative.weight());
     }
 
     private void replay() {
-        double[][] cheats = drain(cheatBuffer);
-        double[][] cleans = drain(cleanBuffer);
-        if (cheats.length == 0 || cleans.length == 0) {
+        int pairs = dataset.balanced();
+        if (pairs == 0) {
             return;
         }
-        int half = Math.max(1, replayBatch / 2);
-        for (int i = 0; i < half; i++) {
-            model.train(cheats[random.nextInt(cheats.length)], 1.0);
-            model.train(cleans[random.nextInt(cleans.length)], 0.0);
+        int batch = Math.max(1, replayBatch / 2);
+        for (int i = 0; i < batch; i++) {
+            int index = random.nextInt(pairs);
+            BalancedDataset.Sample positive = dataset.positive(index);
+            BalancedDataset.Sample negative = dataset.negative(index);
+            if (positive == null || negative == null) {
+                return;
+            }
+            train(positive, negative);
         }
     }
 
-    private double[][] drain(Deque<double[]> buffer) {
+    private void remember(UUID uuid, double[] features) {
+        Deque<double[]> buffer = recent.computeIfAbsent(uuid, ignored -> new ArrayDeque<>(RECENT_CAPACITY));
         synchronized (buffer) {
-            return buffer.toArray(new double[0][]);
+            buffer.addLast(features.clone());
+            while (buffer.size() > RECENT_CAPACITY) {
+                buffer.pollFirst();
+            }
         }
     }
 
@@ -193,14 +211,10 @@ public final class TrainingManager {
     }
 
     public int bufferedCheatSamples() {
-        synchronized (cheatBuffer) {
-            return cheatBuffer.size();
-        }
+        return dataset.positiveCount();
     }
 
     public int bufferedCleanSamples() {
-        synchronized (cleanBuffer) {
-            return cleanBuffer.size();
-        }
+        return dataset.negativeCount();
     }
 }

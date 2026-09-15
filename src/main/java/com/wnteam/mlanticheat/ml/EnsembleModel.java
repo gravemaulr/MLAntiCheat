@@ -86,24 +86,36 @@ public final class EnsembleModel {
             evaluateHoldout(features, label);
             return;
         }
+        apply(features, label, extraWeight);
+    }
+
+    public synchronized void trainPair(double[] positive, double positiveWeight,
+                                       double[] negative, double negativeWeight) {
+        if (positive.length != dimension || negative.length != dimension) {
+            return;
+        }
+        if (isReady() && holdoutRatio > 0.0 && random.nextDouble() < holdoutRatio) {
+            evaluateHoldout(positive, 1.0);
+            evaluateHoldout(negative, 0.0);
+            return;
+        }
+        apply(positive, 1.0, positiveWeight);
+        apply(negative, 0.0, negativeWeight);
+    }
+
+    private void apply(double[] features, double label, double extraWeight) {
         standardizer.update(features);
         double[] z = standardizer.transform(features);
-
-        double imbalance;
         if (label >= 0.5) {
             positiveSamples++;
-            imbalance = negativeSamples == 0 ? 1.0 : (double) negativeSamples / Math.max(1, positiveSamples);
         } else {
             negativeSamples++;
-            imbalance = positiveSamples == 0 ? 1.0 : (double) positiveSamples / Math.max(1, negativeSamples);
         }
-        double weight = Math.max(0.1, Math.min(4.0, imbalance)) * Math.max(0.1, Math.min(8.0, extraWeight));
-
+        double weight = Math.max(0.1, Math.min(8.0, extraWeight));
         double logisticPrediction = logistic.predict(z);
         double neuralPrediction = neural.predict(z);
         logisticLoss = logisticLoss * 0.999 + crossEntropy(logisticPrediction, label) * 0.001;
         neuralLoss = neuralLoss * 0.999 + crossEntropy(neuralPrediction, label) * 0.001;
-
         logistic.train(z, label, weight);
         neural.train(z, label, weight);
     }
@@ -155,6 +167,29 @@ public final class EnsembleModel {
         falsePositives = 0;
         trueNegatives = 0;
         falseNegatives = 0;
+    }
+
+    public synchronized void reset() {
+        standardizer.reset();
+        logistic.reset();
+        neural.reset();
+        positiveSamples = 0;
+        negativeSamples = 0;
+        logisticLoss = 0.693;
+        neuralLoss = 0.693;
+        truePositives = 0;
+        falsePositives = 0;
+        trueNegatives = 0;
+        falseNegatives = 0;
+    }
+
+    public synchronized long balancedSamples() {
+        return Math.min(positiveSamples, negativeSamples) * 2L;
+    }
+
+    public synchronized double balanceRatio() {
+        long total = positiveSamples + negativeSamples;
+        return total == 0 ? 0.0 : (double) positiveSamples / total;
     }
 
     public long getTrainedSamples() {

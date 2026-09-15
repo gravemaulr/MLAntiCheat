@@ -11,13 +11,17 @@ public record MLScores(double precision, double dynamics, double pattern, double
             {13, 14, 15, 16, 23, 24, 25, 28, 30}
     };
 
+    private static final double MIN_MODIFIER = 0.70;
+    private static final double MAX_MODIFIER = 1.30;
+
     public static MLScores evaluate(EnsembleModel model, double[] features) {
         double shared = clamp(model.predict(features));
         double[] heads = new double[4];
         for (int i = 0; i < heads.length; i++) {
             double context = groupMean(features, GROUPS[i]);
             double crossContext = groupMean(features, GROUPS[(i + 1) % GROUPS.length]);
-            heads[i] = clamp(shared * 0.72 + context * 0.20 + crossContext * 0.08);
+            double modifier = MIN_MODIFIER + (MAX_MODIFIER - MIN_MODIFIER) * clamp(context * 0.72 + crossContext * 0.28);
+            heads[i] = clamp(shared * modifier);
         }
         double combined = Arrays.stream(heads).average().orElse(0.0);
         return new MLScores(heads[0], heads[1], heads[2], heads[3], combined);
