@@ -11,7 +11,7 @@ list:
     # настройка previous
     previous: { slot: 45, material: ARROW, name: '<white>Previous page</white>', lore: [], action: prev }
     # настройка search
-    search: { slot: 48, material: NAME_TAG, name: '<white>%search%</white>', lore: ['<gray>Use /mlac gui <name></gray>'], action: none }
+    search: { slot: 48, material: NAME_TAG, name: '<white>%search%</white>', lore: ['<gray>Use /%command% gui <name></gray>'], action: none }
     # настройка sort
     sort: { slot: 49, material: HOPPER, name: '<white>Sort by %sort%</white>', lore: ['<gray>Click to change</gray>'], action: sort }
     # настройка realtime
@@ -30,7 +30,7 @@ list:
     # название кнопки
     name: '<white>%player%</white> <dark_gray>·</dark_gray> <gray>ml %ml%</gray>'
     # описание кнопки
-    lore: ['<gray>%status%</gray>', '<dark_gray>maximum %max%  average %average%</dark_gray>', '<dark_gray>alerts %alerts%  analyses %analyses%</dark_gray>', '', '<yellow>Click to inspect</yellow>']
+    lore: ['<gray>%status%</gray>', '<dark_gray>maximum %max%  average %average%</dark_gray>', '<dark_gray>alerts %alerts%  analyses %analyses%</dark_gray>', '<dark_gray>reports %reports%/%reports_max%</dark_gray>', '', '<yellow>Click to inspect</yellow>']
 card:
   # размер окна
   size: 45
@@ -51,6 +51,8 @@ card:
     statistics: { slot: 22, material: BOOK, name: '<white>Statistics</white>', lore: ['<gray>analyses %analyses%</gray>', '<gray>alerts %alerts%</gray>', '<dark_gray>history %history%</dark_gray>'], action: history }
     # настройка risk
     risk: { slot: 24, material: COMPARATOR, name: '<white>Risk level</white>', lore: ['<gray>%risk%</gray>', '<dark_gray>adjusted %ml%</dark_gray>', '<dark_gray>raw %raw%</dark_gray>'], action: none }
+    # настройка reports
+    reports: { slot: 31, material: PAPER, name: '<white>Reports</white>', lore: ['<gray>total %reports%/%reports_max%</gray>', '<dark_gray>left until punishment %reports_left%</dark_gray>', '<dark_gray>limit reached %punishments% times</dark_gray>'], action: none }
     # настройка back
     back: { slot: 36, material: ARROW, name: '<white>Back</white>', lore: [], action: back }
     # настройка legit

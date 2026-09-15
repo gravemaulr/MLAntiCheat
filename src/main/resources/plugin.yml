@@ -8,11 +8,6 @@ website: https://github.com/gravemaulr/MLAntiCheat
 softdepend:
   - packetevents
   - PacketEvents
-commands:
-  mlac:
-    description: Open MLAntiCheat administration
-    permission: mlac.view
-    aliases: [mlanticheat]
 permissions:
   mlac.view:
     default: op
@@ -26,5 +21,13 @@ permissions:
     default: op
   mlac.dummy:
     default: op
+  mlac.report:
+    default: op
+  mlac.report.notify:
+    default: op
+  mlac.report.manage:
+    default: op
+  mlac.report.bypass:
+    default: false
   mlac.bypass:
     default: false
