@@ -44,6 +44,7 @@ public final class CheckManager {
         Vector direction = target.getEyeLocation().toVector().subtract(eye.toVector());
         double angle = direction.lengthSquared() < 0.0025 ? 0.0 : Math.toDegrees(eye.getDirection().angle(direction.normalize()));
         data.recordAttack(angle, target.getUniqueId(), boxDistance(eye, target.getBoundingBox()), false, target.getName());
+        if (!data.shouldEvaluate(config.evaluationIntervalMs)) return;
         evaluate(attacker, data, FeatureExtractor.analyze(data, config.combatWindowMs));
     }
     public void handleTargetVisible(Player player) { if (!isExempt(player)) dataManager.get(player).markEnemyVisible(); }
@@ -52,11 +53,18 @@ public final class CheckManager {
         Settings config = settings; UUID uuid = player.getUniqueId(); boolean labeled = training.isLabeled(uuid);
         double[] features = analysis.toFeatures(); MLScores prediction = MLScores.evaluate(model, features);
         double reduction = config.correction(player.getPing(), tps); MLScores corrected = multiply(prediction, 1.0 - reduction);
+        training.feed(uuid, features);
+        if (!settled(data, analysis, config)) { data.updateScores(data.mlScores(), prediction.combined(), player.getPing(), tps); return; }
         MLScores scores = corrected.smooth(data.mlScores(), config.smoothing);
         data.updateScores(scores, prediction.combined(), player.getPing(), tps);
-        training.feed(uuid, features);
         if (!labeled) plugin.getAutoTrainingManager().observe(uuid, features, scores.combined(), data.getConfirmations(), true);
         alerts.handle(player, data, config, labeled);
+    }
+
+    private boolean settled(PlayerData data, FeatureExtractor.Analysis analysis, Settings config) {
+        return data.attacksWithin(config.combatWindowMs) >= config.warmupHits
+                && data.combatSpan(config.combatWindowMs) >= config.warmupMs
+                && analysis.samples() >= config.warmupRotations;
     }
     private MLScores multiply(MLScores value, double factor) { double[] score = value.values(); return new MLScores(score[0] * factor, score[1] * factor, score[2] * factor, score[3] * factor, score[4] * factor); }
     private double boxDistance(Location eye, BoundingBox box) { double x = Math.max(box.getMinX(), Math.min(eye.getX(), box.getMaxX())); double y = Math.max(box.getMinY(), Math.min(eye.getY(), box.getMaxY())); double z = Math.max(box.getMinZ(), Math.min(eye.getZ(), box.getMaxZ())); return Math.sqrt(Math.pow(eye.getX() - x, 2) + Math.pow(eye.getY() - y, 2) + Math.pow(eye.getZ() - z, 2)); }
