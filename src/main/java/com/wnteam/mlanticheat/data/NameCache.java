@@ -26,7 +26,7 @@ public final class NameCache {
 
     public NameCache(JavaPlugin plugin) {
         this.plugin = plugin;
-        this.file = new File(plugin.getDataFolder(), "players.yml");
+        this.file = new File(plugin.getDataFolder(), "names.yml");
         load();
     }
 
@@ -96,10 +96,11 @@ public final class NameCache {
     }
 
     private void load() {
-        if (!file.exists()) {
+        File source = file.exists() ? file : new File(plugin.getDataFolder(), "players.yml");
+        if (!source.exists()) {
             return;
         }
-        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(file);
+        YamlConfiguration configuration = YamlConfiguration.loadConfiguration(source);
         ConfigurationSection section = configuration.getConfigurationSection("players");
         if (section == null) {
             return;
@@ -107,10 +108,11 @@ public final class NameCache {
         for (String key : section.getKeys(false)) {
             try {
                 UUID uuid = UUID.fromString(key);
-                String name = section.getString(key);
+                String name = section.isConfigurationSection(key) ? section.getString(key + ".name") : section.getString(key);
                 if (name != null && !name.isBlank()) {
                     byUuid.put(uuid, name);
                     byName.put(name.toLowerCase(Locale.ROOT), uuid);
+                    dirty = true;
                 }
             } catch (IllegalArgumentException ignored) {
             }
